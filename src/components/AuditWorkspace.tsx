@@ -20,6 +20,10 @@ import { downloadAuditPdf } from '../utils/pdfExport';
 interface Props {
   vertical: AuditVerticalId;
   initialAudit?: PublicAuditResponse | null;
+  sampleVariant?: string;
+  customBadge?: string;
+  customTitle?: string;
+  customSampleLabel?: string;
 }
 
 const VERTICAL_COPY: Record<
@@ -58,7 +62,14 @@ const VERTICAL_COPY: Record<
   },
 };
 
-export const AuditWorkspace: React.FC<Props> = ({ vertical, initialAudit = null }) => {
+export const AuditWorkspace: React.FC<Props> = ({
+  vertical,
+  initialAudit = null,
+  sampleVariant,
+  customBadge,
+  customTitle,
+  customSampleLabel,
+}) => {
   const copy = VERTICAL_COPY[vertical];
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -109,6 +120,7 @@ export const AuditWorkspace: React.FC<Props> = ({ vertical, initialAudit = null 
           body: JSON.stringify({
             vertical,
             useSample,
+            sampleVariant: useSample ? sampleVariant : undefined,
             rawText: useSample ? '' : rawText,
             contextNote,
           }),
@@ -205,10 +217,10 @@ export const AuditWorkspace: React.FC<Props> = ({ vertical, initialAudit = null 
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wider text-emerald-300">
-              <Sparkles className="h-3 w-3" /> {copy.badge}
+              <Sparkles className="h-3 w-3" /> {customBadge || copy.badge}
             </span>
             <h2 className="mt-1.5 text-lg font-bold text-white">
-              Upload a PDF, Photo, or Paste Your Quote — Free Instant Red-Flag Preview
+              {customTitle || 'Upload a PDF, Photo, or Paste Your Quote — Free Instant Red-Flag Preview'}
             </h2>
           </div>
           <button
@@ -217,7 +229,7 @@ export const AuditWorkspace: React.FC<Props> = ({ vertical, initialAudit = null 
             onClick={() => handleRunAudit(true)}
             className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-2 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/25 disabled:opacity-50"
           >
-            <Sparkles className="h-3.5 w-3.5" /> {copy.sampleBtn}
+            <Sparkles className="h-3.5 w-3.5" /> {customSampleLabel || copy.sampleBtn}
           </button>
         </div>
 

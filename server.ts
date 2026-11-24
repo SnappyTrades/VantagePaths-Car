@@ -1,12 +1,23 @@
 import 'dotenv/config';
+import crypto from 'node:crypto';
 import express from 'express';
 import multer from 'multer';
 import path from 'node:path';
 import Stripe from 'stripe';
 import { createServer as createViteServer } from 'vite';
-import type { AuditVerticalId } from './src/shared/types.ts';
+import type { AuditVerticalId, StoredAuditRecord } from './src/shared/types.ts';
 import { AuditDatabase } from './server/db.ts';
 import { getLlmPoolStatus } from './server/llmRouter.ts';
+import {
+  AUTO_ADDONS_GUIDE,
+  AUTO_CONSUMER_RESOURCES,
+  calculateAddOnRefund,
+  calculateFourSquareReverse,
+  calculatePromoVsRebate,
+  FI_ADMINISTRATORS,
+  generateCancellationTemplates,
+  STATE_AUTO_RULES,
+} from './server/autoKnowledge.ts';
 import {
   calculateAutoDeal,
   calculateFreightProfit,
@@ -157,9 +168,34 @@ async function startServer() {
       let fileBuffer: Buffer | null = null;
 
       if (useSample) {
-        const sample = getSampleAuditInput(vertical);
-        fileName = sample.fileName;
-        rawText = sample.rawText;
+        if (vertical === 'auto' && req.body?.sampleVariant === 'signed-contract') {
+          fileName = 'Sample_Signed_RISC_TILA_Contract.txt';
+          rawText = `RETAIL INSTALLMENT SALE CONTRACT — SIMPLE FINANCE CHARGE (TRUTH-IN-LENDING DISCLOSURE)
+Buyer: Alex Rivera | Dealer: Metro Valley Motors (Texas) | Purchase Date: 22 days ago
+Vehicle: 2025 Honda CR-V Hybrid Sport-L AWD | Odometer: 1,140 miles
+
+FEDERAL TRUTH-IN-LENDING (TILA) BOX:
+- Annual Percentage Rate (APR): 8.99%
+- Finance Charge (Total Interest Paid): $12,844.80
+- Amount Financed: $43,620.00
+- Total of Payments (72 payments of $784.23): $56,464.80
+
+ITEMIZATION OF AMOUNT FINANCED:
+1. Cash Price of Vehicle (includes $1,295 Paint/Fabric Shield + $595 Pulse Brake): $39,385.00
+2. Official Fees + Sales Tax (6.25%): $2,740.00
+3. Dealer Documentary Fee (TX Cap $225): $225.00
+4. Optional Service Contract (Fidelity Platinum VSC 72mo/100k): $3,495.00
+5. Optional GAP Debt Waiver (Dealer Financed): $1,195.00
+6. Optional Tire & Wheel Road Hazard Plan: $895.00
+7. Less Cash Down Payment: -$4,315.00
+TOTAL AMOUNT FINANCED: $43,620.00
+
+NOTE: Buyer was told in the F&I office that the lender "strongly prefers" GAP and VSC for approval. All optional F&I contracts are within the 30-day free-look window with zero claims filed.`;
+        } else {
+          const sample = getSampleAuditInput(vertical);
+          fileName = sample.fileName;
+          rawText = sample.rawText;
+        }
       } else if (req.file) {
         fileName = req.file.originalname || 'Uploaded_Document';
         mimeType = req.file.mimetype || 'application/octet-stream';
@@ -369,6 +405,125 @@ async function startServer() {
     const result = calculateHomeBidBenchmark(req.body || {});
     db.logEvent({ eventName: 'calculator_used', vertical: 'home-bids' });
     res.json(result);
+  });
+
+  // Auto Advantage Hub — Informational Reference, Before/During/After Engines & Paywalled Self-Service Cancellation Kit
+  app.get('/api/auto/reference', (_req, res) => {
+    res.json({
+      addons: AUTO_ADDONS_GUIDE,
+      states: Object.values(STATE_AUTO_RULES),
+      administrators: FI_ADMINISTRATORS,
+      resources: AUTO_CONSUMER_RESOURCES,
+    });
+  });
+
+  app.post('/api/auto/four-square', (req, res) => {
+    const result = calculateFourSquareReverse(req.body || {});
+    db.logEvent({ eventName: 'calculator_used', vertical: 'auto', metadata: { tool: 'four_square' } });
+    res.json(result);
+  });
+
+  app.post('/api/auto/path-compare', (req, res) => {
+    const result = calculatePromoVsRebate(req.body || {});
+    db.logEvent({ eventName: 'calculator_used', vertical: 'auto', metadata: { tool: 'path_compare' } });
+    res.json(result);
+  });
+
+  app.post('/api/auto/refund-kit', (req, res) => {
+    const input = req.body || {};
+    const estimate = calculateAddOnRefund(input);
+    const templates = generateCancellationTemplates(input, estimate);
+    const auditId = `vp_autorefund_${crypto.randomBytes(5).toString('hex')}`;
+    const createdUtc = new Date().toISOString();
+
+    const stored: StoredAuditRecord = {
+      auditId,
+      vertical: 'auto',
+      createdUtc,
+      fileName: 'Self-Service F&I Add-On Cancellation Kit',
+      mimeType: 'application/json',
+      documentSummary: `Self-service informational cancellation & refund calculation for ${estimate.lines.length} optional F&I add-on(s) totaling $${estimate.totalAddOnsPaidUsd.toLocaleString()} (${estimate.daysSincePurchase} days since purchase).`,
+      verdictLabel: estimate.withinFreeLook
+        ? `100% Free-Look Refund Eligible (~$${estimate.totalRecoverableValueUsd.toLocaleString()} Total Value)`
+        : `Prorated Refund Eligible (~$${estimate.totalRecoverableValueUsd.toLocaleString()} Total Value)`,
+      verdictTone: estimate.totalRecoverableValueUsd > 1500 ? 'high_risk' : 'moderate_risk',
+      estimatedSavingsUsd: estimate.totalRecoverableValueUsd,
+      billedTotalUsd: estimate.totalAddOnsPaidUsd,
+      fairRangeLabel: `~$${estimate.estimatedPrincipalRefundUsd.toLocaleString()} Refund + ~$${estimate.estimatedLoanInterestSavedUsd.toLocaleString()} Interest Saved`,
+      freeFlags: [
+        {
+          level: 'CRITICAL',
+          title: estimate.withinFreeLook
+            ? `Inside ${estimate.stateFreeLookDays}-Day Free-Look Window (100% Refund)`
+            : `Prorated Cancellation Eligible (Max ~$${estimate.stateAdminFeeCapUsd} Fee Cap)`,
+          detail: estimate.withinFreeLook
+            ? `At ${estimate.daysSincePurchase} days since purchase with no claims filed, optional VSC/GAP/ancillary contracts generally qualify for a 100% refund with zero admin fee.`
+            : `At ${estimate.monthsElapsed} months elapsed, unused contract time/mileage is refundable on a prorated basis directly to your loan principal (or to you if paid cash).`,
+          estimatedImpactUsd: estimate.estimatedPrincipalRefundUsd,
+        },
+        {
+          level: 'WARNING',
+          title: input.financedInLoan
+            ? `Eliminates ~$${estimate.estimatedLoanInterestSavedUsd.toLocaleString()} in Future Loan Interest`
+            : 'Direct Cash Refund Opportunity (Not Financed)',
+          detail: input.financedInLoan
+            ? `Applying ~$${estimate.estimatedPrincipalRefundUsd.toLocaleString()} back to principal on your ${input.loanAprPct}% loan avoids ~$${estimate.estimatedLoanInterestSavedUsd.toLocaleString()} in compound interest and shaves roughly ${estimate.estimatedMonthsCutFromLoan} payments off the end of your loan.`
+            : 'Because these add-ons were paid out of pocket, the administrator/dealer remits the refund check directly to you.',
+          estimatedImpactUsd: estimate.estimatedLoanInterestSavedUsd,
+        },
+      ],
+      lockedFlags: [
+        {
+          level: 'INFO',
+          title: 'Day-14 Dealer Stall-Buster Escalation Letter Included',
+          detail: `${templates.stallBusterSubject}\n\n${templates.stallBusterLetter}`,
+          estimatedImpactUsd: null,
+        },
+        {
+          level: 'INFO',
+          title: 'Lender Principal-Application Verification Script Included',
+          detail: templates.lenderCheckScript,
+          estimatedImpactUsd: null,
+        },
+      ],
+      lineItems: estimate.lines.map((l) => ({
+        label: l.label,
+        quotedAmount: `$${l.originalCostUsd.toLocaleString()}`,
+        benchmarkAmount:
+          l.refundMode === 'DISPUTE_ONLY'
+            ? 'Check Contract / Dispute'
+            : `~$${l.estimatedRefundUsd.toLocaleString()} Refund`,
+        status: l.refundMode === 'DISPUTE_ONLY' ? 'SUSPECT' : 'OVERCHARGED',
+      })),
+      counterOfferSubject: templates.cancellationSubject,
+      counterOfferScript: templates.cancellationLetter,
+      negotiationChecklist: templates.checklist,
+      deterministicMetrics: [
+        { label: 'Est. Principal / Cash Refund', value: `$${estimate.estimatedPrincipalRefundUsd.toLocaleString()}` },
+        { label: 'Est. Future Interest Saved', value: `$${estimate.estimatedLoanInterestSavedUsd.toLocaleString()}` },
+        { label: 'Total Recoverable Value', value: `$${estimate.totalRecoverableValueUsd.toLocaleString()}` },
+      ],
+      reasoningProvider: 'DETERMINISTIC_FALLBACK',
+      llmProvider: null,
+      modelUsed: 'Deterministic Auto Refund Engine',
+      isUnlocked: false,
+      unlockedUtc: null,
+      unlockMethod: null,
+      stripeSessionId: null,
+    };
+
+    db.saveAudit(stored);
+    db.logEvent({
+      eventName: 'audit_completed',
+      vertical: 'auto',
+      auditId,
+      metadata: { tool: 'refund_kit', estimatedSavingsUsd: stored.estimatedSavingsUsd },
+    });
+
+    return res.json({
+      estimate,
+      kit: toPublicAuditResponse(stored),
+    });
   });
 
   // Funnel Analytics & Phase 2 Waitlist

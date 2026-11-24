@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { AuditVerticalId, PublicAuditResponse } from './shared/types';
 import { AuditWorkspace } from './components/AuditWorkspace';
+import { AutoAdvantageHub } from './components/AutoAdvantageHub';
 import { FreeCalculators } from './components/FreeCalculators';
 import { AdminFunnelView } from './components/AdminFunnelView';
 
@@ -445,9 +446,14 @@ const DedicatedVerticalPage: React.FC<{
         </div>
       </div>
 
-      <AuditWorkspace vertical={vertical} initialAudit={initialAudit} />
-
-      <FreeCalculators vertical={vertical} />
+      {vertical === 'auto' ? (
+        <AutoAdvantageHub initialAudit={initialAudit} />
+      ) : (
+        <>
+          <AuditWorkspace vertical={vertical} initialAudit={initialAudit} />
+          <FreeCalculators vertical={vertical} />
+        </>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
         <div className="text-sm text-slate-300">

@@ -223,7 +223,7 @@ export function downloadAuditPdf(audit: PublicAuditResponse): void {
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
   doc.text(
-    'Disclaimer: VantagePaths provides informational audit benchmarks and negotiation templates — not legal, tax, or licensed adjusting advice. Verify figures against signed contracts.',
+    'Self-Service Informational Toolkit: VantagePaths provides independent benchmarks & templates you review, sign, and send yourself — not legal, tax, or representation services.',
     margin,
     pageHeight - 24
   );

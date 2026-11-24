@@ -14,6 +14,14 @@ import {
   generateStructuredAuditWithFailover,
   getLlmPoolStatus,
 } from '../server/llmRouter.ts';
+import {
+  AUTO_ADDONS_GUIDE,
+  calculateAddOnRefund,
+  calculateFourSquareReverse,
+  calculatePromoVsRebate,
+  generateCancellationTemplates,
+  STATE_AUTO_RULES,
+} from '../server/autoKnowledge.ts';
 
 async function runTests() {
   console.log('Running VantagePaths Audit Hub unit tests...');
@@ -156,6 +164,100 @@ async function runTests() {
   } finally {
     db.close();
   }
+
+  // 7. Auto Advantage Hub — 50-state rules, legal add-on decoder, 4-square, promo vs rebate, and F&I refund + interest
+  assert.ok(Object.keys(STATE_AUTO_RULES).length >= 50);
+  assert.equal(STATE_AUTO_RULES.CA.docFeeCapUsd, 85);
+  assert.equal(STATE_AUTO_RULES.CA.tradeInTaxCredit, false);
+  assert.equal(STATE_AUTO_RULES.TX.docFeeCapUsd, 225);
+  assert.ok(AUTO_ADDONS_GUIDE.some((a) => a.id === 'extended-warranty' && a.legallyRequired === 'OPTIONAL'));
+  assert.ok(AUTO_ADDONS_GUIDE.some((a) => a.id === 'sales-tax' && a.legallyRequired === 'REQUIRED'));
+
+  const fourSq = calculateFourSquareReverse({
+    vehiclePriceUsd: 36500,
+    downOrTradeUsd: 4000,
+    salesTaxPct: 7.25,
+    titleRegDocUsd: 550,
+    termMonths: 72,
+    dealerQuotedMonthlyUsd: 689,
+    expectedFairAprPct: 5.9,
+  });
+  assert.equal(fourSq.verdict, 'HEAVY_PACKING');
+  assert.ok(fourSq.hiddenMarkupEstimateUsd > 4000);
+
+  const pathCmp = calculatePromoVsRebate({
+    vehiclePriceUsd: 38000,
+    downPaymentUsd: 4000,
+    tradeInValueUsd: 14000,
+    tradeInPayoffUsd: 6000,
+    stateCode: 'TX',
+    termMonths: 60,
+    promoAprPct: 1.9,
+    cashRebateUsd: 3000,
+    creditUnionAprPct: 5.79,
+  });
+  assert.equal(pathCmp.tradeInTaxSavingsUsd, 875);
+  assert.ok(pathCmp.advantageUsd > 0);
+
+  // Free-look 100% refund + compound loan interest eliminated
+  const refNow = new Date('2026-11-24T12:00:00Z');
+  const freeLook = calculateAddOnRefund(
+    {
+      purchaseDateIso: '2026-11-05',
+      stateCode: 'TX',
+      financedInLoan: true,
+      loanAprPct: 8.89,
+      loanTermMonths: 72,
+      purchaseMileage: 50,
+      currentMileage: 900,
+      claimsFiled: false,
+      items: [
+        { type: 'vsc', label: 'Extended Warranty', costUsd: 3495, contractTermMonths: 72 },
+        { type: 'gap', label: 'GAP Waiver', costUsd: 1195, contractTermMonths: 72 },
+      ],
+    },
+    refNow
+  );
+  assert.equal(freeLook.withinFreeLook, true);
+  assert.equal(freeLook.estimatedPrincipalRefundUsd, 4690);
+  assert.ok(freeLook.estimatedLoanInterestSavedUsd > 1200);
+  assert.ok(freeLook.totalRecoverableValueUsd > 5900);
+
+  // Prorated refund after free-look
+  const prorated = calculateAddOnRefund(
+    {
+      purchaseDateIso: '2025-11-24',
+      stateCode: 'CA',
+      financedInLoan: true,
+      loanAprPct: 8.0,
+      loanTermMonths: 72,
+      purchaseMileage: 100,
+      currentMileage: 12100,
+      claimsFiled: false,
+      items: [{ type: 'vsc', label: 'Extended Warranty', costUsd: 3600, contractTermMonths: 72 }],
+    },
+    refNow
+  );
+  assert.equal(prorated.withinFreeLook, false);
+  assert.ok(prorated.estimatedPrincipalRefundUsd > 2800 && prorated.estimatedPrincipalRefundUsd < 3100);
+  const templates = generateCancellationTemplates(
+    {
+      purchaseDateIso: '2026-11-05',
+      stateCode: 'TX',
+      financedInLoan: true,
+      loanAprPct: 8.89,
+      loanTermMonths: 72,
+      purchaseMileage: 50,
+      currentMileage: 900,
+      claimsFiled: false,
+      items: [{ type: 'vsc', label: 'Extended Warranty', costUsd: 3495, contractTermMonths: 72 }],
+      buyerName: 'Alex Buyer',
+      vin: '1HGCV1F30RA000001',
+    },
+    freeLook
+  );
+  assert.ok(templates.cancellationLetter.includes('1HGCV1F30RA000001'));
+  assert.ok(templates.stallBusterLetter.includes('CFPB'));
 
   console.log('ALL VANTAGEPATHS AUDIT HUB TESTS PASSED!');
 }
