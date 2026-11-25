@@ -3,16 +3,17 @@
 @layer base {
   html {
     scroll-behavior: smooth;
-    background-color: #faf9f5;
-    color: #0b1528;
+    background-color: #eef4fa;
+    color: #071930;
   }
   body {
     font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
-    background-color: #faf9f5;
-    color: #0b1528;
+    background: linear-gradient(180deg, #eaf1f8 0%, #f5f8fc 45%, #edf3fa 100%);
+    color: #071930;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-optical-sizing: auto;
+    min-height: 100vh;
   }
   h1, h2, h3, h4, .font-serif-display, .font-display {
     font-family: 'Bricolage Grotesque', 'DM Sans', system-ui, sans-serif;
@@ -22,4 +23,51 @@
     font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
     font-variant-numeric: tabular-nums;
   }
+}
+
+/* Signature Midnight-to-Ocean Architectural Hero Canvas */
+.vp-hero-canvas {
+  background-color: #051529;
+  background-image:
+    radial-gradient(at 18% 15%, rgba(14, 165, 233, 0.22) 0px, transparent 52%),
+    radial-gradient(at 84% 22%, rgba(16, 185, 129, 0.22) 0px, transparent 48%),
+    radial-gradient(at 52% 100%, rgba(45, 212, 191, 0.16) 0px, transparent 55%),
+    linear-gradient(135deg, #041122 0%, #082342 52%, #0c3559 100%);
+}
+
+/* Luxury Elevated Surface Card */
+.vp-card {
+  background: #ffffff;
+  border: 1px solid rgba(203, 213, 225, 0.75);
+  border-radius: 1.5rem;
+  box-shadow:
+    0 20px 45px -15px rgba(6, 24, 46, 0.1),
+    0 4px 12px -4px rgba(6, 24, 46, 0.04);
+}
+
+/* Signature Mockup Pill Buttons */
+.vp-btn-sapphire {
+  background: linear-gradient(135deg, #0b4f9c 0%, #1366c2 55%, #0e7490 100%);
+  box-shadow: 0 10px 24px -6px rgba(11, 79, 156, 0.45);
+}
+.vp-btn-sapphire:hover {
+  background: linear-gradient(135deg, #094282 0%, #0f56a6 55%, #0c637b 100%);
+  box-shadow: 0 14px 28px -6px rgba(11, 79, 156, 0.55);
+}
+
+.vp-btn-emerald {
+  background: linear-gradient(135deg, #047857 0%, #059669 52%, #0d9488 100%);
+  box-shadow: 0 10px 24px -6px rgba(5, 150, 105, 0.42);
+}
+.vp-btn-emerald:hover {
+  background: linear-gradient(135deg, #065f46 0%, #047857 52%, #0f766e 100%);
+  box-shadow: 0 14px 28px -6px rgba(5, 150, 105, 0.52);
+}
+
+.vp-btn-midnight {
+  background: linear-gradient(135deg, #06182e 0%, #0c2d52 100%);
+  box-shadow: 0 10px 24px -6px rgba(6, 24, 46, 0.35);
+}
+.vp-btn-midnight:hover {
+  background: linear-gradient(135deg, #0b2545 0%, #0f766e 100%);
 }

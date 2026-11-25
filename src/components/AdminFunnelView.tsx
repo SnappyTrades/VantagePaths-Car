@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, ArrowUpRight, Bell, Cpu, DollarSign, RefreshCw, TrendingUp } from 'lucide-react';
 import type { AnalyticsSummaryResponse, LlmPoolStatusResponse } from '../shared/types';
+import { PageHeroBanner } from './PageHeroBanner';
 
 export const AdminFunnelView: React.FC = () => {
   const [summary, setSummary] = useState<AnalyticsSummaryResponse | null>(null);
@@ -30,26 +31,32 @@ export const AdminFunnelView: React.FC = () => {
     : 0;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-10 sm:px-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[#0F766E]">
-            Day-1 Dual Revenue Telemetry
-          </span>
-          <h1 className="font-serif-display text-3xl font-bold text-[#0B1528]">
-            Direct Pass Sales + Partner Affiliate Revenue Dashboard
-          </h1>
-          <p className="text-xs text-slate-600">
-            Tracks BOTH visitors who buy the $29 Pass AND free visitors who click high-CPA Auto Refi, Pre-Approval, Insurance &amp; Cash-Offer links.
-          </p>
+    <>
+      <PageHeroBanner
+        kicker="VantagePaths Telemetry • Revenue Dashboard"
+        titleWhite="Direct Pass Sales &"
+        titleAccent="Partner Affiliate Revenue"
+        subtitle="Real-time telemetry tracking both visitors who unlock the $29 Pass and free visitors who click high-CPA partner links."
+        pills={[
+          { label: 'Pass Sales' },
+          { label: 'Tracked Outbound EPC' },
+          { label: '$0 AI Pool Status' },
+        ]}
+      />
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-10 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-2xl font-extrabold text-[#071930]">
+              Telemetry &amp; Conversion Performance
+            </h2>
+          </div>
+          <button
+            onClick={load}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-[#071930] hover:bg-slate-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh Live Data
+          </button>
         </div>
-        <button
-          onClick={load}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-[#0B1528] hover:bg-slate-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh Live Data
-        </button>
-      </div>
 
       {summary && (
         <>
@@ -151,6 +158,7 @@ export const AdminFunnelView: React.FC = () => {
         </div>
       )}
     </div>
+    </>
   );
 };
 

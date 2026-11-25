@@ -14,6 +14,7 @@ import {
 import { AuditWorkspace } from './AuditWorkspace';
 import { LockedGeneratorCard } from './LockedGeneratorCard';
 import { PartnerCard } from './PartnerCard';
+import { PageHeroBanner } from './PageHeroBanner';
 
 /* =====================================================================
    PILLAR 3: ZERO-SPAM AUTO INSURANCE AUDIT & 6-MONTH RENEWAL HOOK
@@ -75,18 +76,23 @@ export const InsuranceAuditPage: React.FC<{ states: any[] }> = ({ states }) => {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-10 px-4 py-10 sm:px-6">
-      <div className="space-y-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0F766E]">
-          Pillar 3 • Recurring Every-6-Months Savings
-        </span>
-        <h1 className="font-serif-display text-3xl font-bold text-[#0B1528] sm:text-4xl">
-          Cut Your Auto Insurance Renewal Without Giving Away Your Phone Number
-        </h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-          Insurers systematically raise rates on loyal customers every 6–12 months. Audit your current Declarations Page here, catch deductible &amp; roadside traps, and generate a clean 1-page Apples-to-Apples Quote Spec Sheet to email agents with zero spam calls.
-        </p>
-      </div>
+    <>
+      <PageHeroBanner
+        kicker="Pillar 3 • Zero-Spam Auto Insurance Audit"
+        titleWhite="Cut Your Insurance Renewal —"
+        titleAccent="Without Giving Away Your Phone Number"
+        subtitle="Insurers systematically raise rates on loyal customers every 6–12 months. Audit your current Declarations Page, expose roadside CLUE traps, and generate a standardized quote request to email agents directly."
+        imageSrc="/images/pillar-insurance.jpg"
+        imageAlt="Glowing insurance protection shield"
+        imageBadgeTop="Pillar 3"
+        imageBadgeValue="Zero Spam Calls"
+        pills={[
+          { label: 'Loyalty Hike Audit' },
+          { label: 'Deductible Break-Even' },
+          { label: 'Standardized Quote Spec' },
+        ]}
+      />
+      <div className="mx-auto max-w-7xl space-y-10 px-4 py-10 sm:px-6">
 
       {/* Policy Declarations Deterministic Analyzer */}
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -274,6 +280,7 @@ export const InsuranceAuditPage: React.FC<{ states: any[] }> = ({ states }) => {
         )}
       </section>
     </div>
+    </>
   );
 };
 
@@ -307,18 +314,23 @@ export const SellOrTradePage: React.FC<{ states: any[] }> = ({ states }) => {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-10 px-4 py-10 sm:px-6">
-      <div className="space-y-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0F766E]">
-          Pillar 4 • Max-Cash Car Exit Optimizer
-        </span>
-        <h1 className="font-serif-display text-3xl font-bold text-[#0B1528] sm:text-4xl">
-          Don't Leave $2,500 on the Table When Trading In or Selling Your Car
-        </h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-          In 40+ states, trading in saves you hundreds or thousands in sales tax — while in states like California, Virginia, and Oklahoma, selling privately or to an instant cash buyer wins outright. Compare all 3 exit paths with exact tax math.
-        </p>
-      </div>
+    <>
+      <PageHeroBanner
+        kicker="Pillar 4 • Max-Cash Car Exit Optimizer"
+        titleWhite="Sell or Trade In —"
+        titleAccent="Without Getting Lowballed"
+        subtitle="In 40+ states, trading in saves hundreds in sales tax — while in states like CA, VA and OK, selling privately or to instant cash buyers wins outright. Compare dealer trade-in vs. cash offers vs. private sale."
+        imageSrc="/images/pillar-sell.jpg"
+        imageAlt="Smart car key fob with trade tag"
+        imageBadgeTop="Pillar 4"
+        imageBadgeValue="Exact State Tax Math"
+        pills={[
+          { label: 'Trade-In Tax Credit' },
+          { label: 'Instant Cash Benchmark' },
+          { label: 'Zero-Scam Playbook' },
+        ]}
+      />
+      <div className="mx-auto max-w-7xl space-y-10 px-4 py-10 sm:px-6">
 
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <form onSubmit={runCalc} className="space-y-4">
@@ -414,6 +426,7 @@ export const SellOrTradePage: React.FC<{ states: any[] }> = ({ states }) => {
         </div>
       </section>
     </div>
+    </>
   );
 };
 
@@ -440,7 +453,19 @@ export const StatesLawHubPage: React.FC<{
   }, [states, query]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 px-4 py-10 sm:px-6">
+    <>
+      <PageHeroBanner
+        kicker="50 States + DC Car Buyer Law Hub"
+        titleWhite="Every State Plays by"
+        titleAccent="Different Rules"
+        subtitle="Check statutory dealer doc fee caps, trade-in sales tax credit legality, warranty free-look cancellation windows, and maximum cancellation fees across all 50 states and Washington D.C."
+        pills={[
+          { label: 'Doc Fee Caps' },
+          { label: 'Trade Tax Credits' },
+          { label: 'Cancellation Statutes' },
+        ]}
+      />
+      <div className="mx-auto max-w-7xl space-y-8 px-4 py-10 sm:px-6">
       {activeState ? (
         <div className="space-y-6">
           <button
@@ -569,6 +594,7 @@ export const StatesLawHubPage: React.FC<{
         </>
       )}
     </div>
+    </>
   );
 };
 

@@ -19,6 +19,7 @@ import { AuditWorkspace } from './AuditWorkspace';
 import { CarHunterSection } from './CarHunterSection';
 import { LockedGeneratorCard } from './LockedGeneratorCard';
 import { PartnerCard } from './PartnerCard';
+import { PageHeroBanner } from './PageHeroBanner';
 
 interface StateRule {
   code: string;
@@ -177,19 +178,23 @@ export const BuyFromHomePage: React.FC<Props> = ({ states, initialAudit = null }
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-10 px-4 py-10 sm:px-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#0F766E]">
-          Pillar 1 • Couch-to-Keys Deal Room
-        </span>
-        <h1 className="font-serif-display text-3xl font-bold text-[#0B1528] sm:text-4xl">
-          Buy Your Next Car 95% From Home — Without Stepping Into a Dealership Blind
-        </h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-          Dealers win by mixing car price, trade-in, financing, and add-ons at one desk under time pressure. Follow this 5-step remote workflow to decode the VIN, lock in outside financing, run a zero-spam 5-dealer email bid-war, and audit the final contract PDF from your couch.
-        </p>
-      </div>
+    <>
+      <PageHeroBanner
+        kicker="Pillar 1 • Couch-to-Keys Remote Deal Room"
+        titleWhite="Buy Your Next Car 95% From Home —"
+        titleAccent="Without Getting Played"
+        subtitle="Live NHTSA recalls, 5-dealer blind email bid-wars, side-by-side quote comparisons, out-of-state shipping math, and contract audits — completely from your couch."
+        imageSrc="/images/pillar-buy.jpg"
+        imageAlt="Buy a car remotely from home"
+        imageBadgeTop="Pillar 1"
+        imageBadgeValue="Couch-to-Keys"
+        pills={[
+          { label: 'Live NHTSA VIN Recalls' },
+          { label: '5-Dealer Blind Bid-War' },
+          { label: '4-Square BS-Detector' },
+        ]}
+      />
+      <div className="mx-auto max-w-7xl space-y-10 px-4 py-10 sm:px-6">
 
       {/* ANTI-DEALER LEVERAGE CAR HUNTER */}
       <CarHunterSection
@@ -643,6 +648,7 @@ export const BuyFromHomePage: React.FC<Props> = ({ states, initialAudit = null }
         <AuditWorkspace vertical="auto" initialAudit={initialAudit} />
       </section>
     </div>
+    </>
   );
 };
 

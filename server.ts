@@ -28,6 +28,7 @@ import {
   resolvePartnerUrl,
 } from './server/autoServices.ts';
 import { searchVehicleInventory } from './server/inventorySearch.ts';
+import { runLifeTool } from './server/lifeTools.ts';
 import {
   calculateAutoDeal,
   getSampleAuditInput,
@@ -110,7 +111,20 @@ async function startServer() {
   });
 
   app.get('/sitemap.xml', (_req, res) => {
-    const corePaths = ['/', '/buy', '/rescue', '/insurance', '/sell', '/states'];
+    const corePaths = [
+      '/',
+      '/auto',
+      '/auto/buy',
+      '/auto/rescue',
+      '/auto/insurance',
+      '/auto/sell',
+      '/auto/states',
+      '/home',
+      '/money',
+      '/tech',
+      '/protect',
+      '/life',
+    ];
     const statePaths = Object.keys(STATE_AUTO_RULES).map((code) => `/state/${code}`);
     const urls = [...corePaths, ...statePaths]
       .map((p) => `  <url><loc>${APP_URL}${p}</loc><changefreq>weekly</changefreq></url>`)
@@ -777,6 +791,24 @@ Best,
       ...freeAnalysis,
       kit: toPublicAuditResponse(stored),
     });
+  });
+
+  // VantagePaths Life Verticals (Home / Money / Tech / Protect / Everyday Life)
+  // Free diagnostic math + server-locked generated letters (same fee rule as Auto).
+  app.post('/api/life/:toolId', (req, res) => {
+    if (!checkRateLimit(getClientIp(req), 'life', 30)) {
+      return res.status(429).json({ error: 'Too many requests — please wait a minute and try again.' });
+    }
+    const out = runLifeTool(req.params.toolId, req.body || {});
+    if (!out) return res.status(404).json({ error: 'Unknown tool.' });
+    db.saveAudit(out.record);
+    db.logEvent({
+      eventName: 'audit_completed',
+      vertical: 'auto',
+      auditId: out.record.auditId,
+      metadata: { tool: req.params.toolId },
+    });
+    return res.json({ result: out.result, kit: toPublicAuditResponse(out.record) });
   });
 
   app.post('/api/auto/sell-exit', (req, res) => {

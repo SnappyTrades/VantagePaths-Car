@@ -17,6 +17,7 @@ import type { PublicAuditResponse } from '../shared/types';
 import { AuditWorkspace } from './AuditWorkspace';
 import { LockedGeneratorCard } from './LockedGeneratorCard';
 import { PartnerCard } from './PartnerCard';
+import { PageHeroBanner } from './PageHeroBanner';
 
 interface Props {
   refData: any;
@@ -206,18 +207,23 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-10 px-4 py-10 sm:px-6">
-      <div className="space-y-2" id="rescue-generator-top">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#05A66B]">
-          Pillar 2 • 2-Step Car Loan Rescue &amp; Warranty Cancellation Generator
-        </span>
-        <h1 className="font-display text-3xl font-extrabold text-[#082545] sm:text-4xl">
-          Search Your Extended Warranty / GAP Company &amp; Generate Your State-Specific Cancellation Packet
-        </h1>
-        <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-          Dealership finance managers stall phone cancellations to protect their commission. Select your warranty or GAP company (or enter a custom provider), choose your purchase state so we cite your state's statutory refund rules, and generate your ready-to-sign cancellation packet.
-        </p>
-      </div>
+    <>
+      <PageHeroBanner
+        kicker="Pillar 2 • Highest Consumer ROI"
+        titleWhite="2-Step Car Loan Rescue &"
+        titleAccent="Warranty Cancellation Generator"
+        subtitle="Dealerships stall phone cancellations to protect their F&I commissions. Search your warranty or GAP company, apply your state's statutory refund protections, and generate sign-ready cancellation letters + day-14 stall-busters."
+        imageSrc="/images/pillar-rescue.jpg"
+        imageAlt="Car loan paperwork stamped reworked with calculator"
+        imageBadgeTop="Pillar 2"
+        imageBadgeValue="Avg. $3,500+ Recovery"
+        pills={[
+          { label: '20 Major Providers + Custom' },
+          { label: '50-State Statutory Citations' },
+          { label: 'LTV Drop & Refi Math' },
+        ]}
+      />
+      <div className="mx-auto max-w-7xl space-y-10 px-4 py-10 sm:px-6">
 
       {/* MAIN WARRANTY PROVIDER SEARCH + REFUND & LETTER GENERATOR */}
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -707,6 +713,7 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
         </div>
       </section>
     </div>
+    </>
   );
 };
 
