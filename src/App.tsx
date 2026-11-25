@@ -551,7 +551,7 @@ const EditorialHomePage: React.FC<{ navigate: (path: string) => void; states: an
             onClick={() => navigate('/states')}
             className="text-xs font-extrabold text-[#0F766E] hover:underline"
           >
-            View All {states.length || 51} States →
+            View All States →
           </button>
         </div>
         <div className="flex flex-wrap gap-2">

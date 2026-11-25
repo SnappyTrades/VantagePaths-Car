@@ -425,7 +425,7 @@ export const SellOrTradePage: React.FC<{ states: any[] }> = ({ states }) => {
 };
 
 /* =====================================================================
-   51-STATE CAR BUYER LAW & "RETURN MYTH" SEO HUB (/states & /state/:code)
+   50 STATES + DC CAR BUYER LAW & "RETURN MYTH" SEO HUB (/states & /state/:code)
 ===================================================================== */
 export const StatesLawHubPage: React.FC<{
   states: any[];
