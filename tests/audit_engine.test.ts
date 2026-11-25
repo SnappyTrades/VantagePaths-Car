@@ -17,6 +17,7 @@ import {
   calculateAddOnRefund,
   calculateFourSquareReverse,
   calculatePromoVsRebate,
+  FI_ADMINISTRATORS,
   generateCancellationTemplates,
   STATE_AUTO_RULES,
 } from '../server/autoKnowledge.ts';
@@ -272,11 +273,14 @@ async function runTests() {
       currentMileage: 900,
       claimsFiled: false,
       items: [{ type: 'vsc', label: 'Extended Warranty', costUsd: 3495, contractTermMonths: 72 }],
+      administratorName: 'Fidelity Warranty Services',
       vin: '1HGCV1F30RA000001',
     },
     freeLook
   );
+  assert.equal(FI_ADMINISTRATORS.length, 20);
   assert.ok(templates.cancellationLetter.includes('1HGCV1F30RA000001'));
+  assert.ok(templates.cancellationLetter.includes('Deerfield Beach, FL'));
 
   const oos = calculateOutOfStateSavings({
     homeStateCode: 'FL',

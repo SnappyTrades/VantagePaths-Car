@@ -33,6 +33,7 @@ export interface FiAdministratorInfo {
   name: string;
   products: string;
   freeLookWindow: string;
+  cancellationAddress: string;
   directBypassTip: string;
   requiredDocs: string[];
   contactHint: string;
@@ -423,32 +424,35 @@ export const STATE_AUTO_RULES: Record<string, StateAutoRule> = {
 
 export const FI_ADMINISTRATORS: FiAdministratorInfo[] = [
   {
+    id: 'fidelity-jma',
+    name: 'Fidelity Warranty Services / JM&A Group',
+    products: 'Platinum/Gold/Powertrain VSC, GAP, Tire & Wheel, Road Hazard',
+    freeLookWindow: '30–60 days full refund (state dependent); prorated after',
+    cancellationAddress: 'Fidelity Warranty Services, Attn: Cancellations Dept., P.O. Box 8567, Deerfield Beach, FL 33443',
+    directBypassTip:
+      'Fidelity phone reps often tell callers to return to the dealer first, BUT accept direct signed written cancellation via Certified Mail when you state the selling dealer is unresponsive.',
+    requiredDocs: ['Signed Cancellation Letter', 'Copy of VSC/GAP Declaration Page', 'Timestamped Odometer Photo'],
+    contactHint: '1-800-327-5172 • fidelitywarrantyservices.com',
+  },
+  {
     id: 'ally',
     name: 'Ally Premier Protection / Ally GAP',
     products: 'Extended Warranty (VSC), GAP, Tire & Wheel, Maintenance',
     freeLookWindow: '60 days full refund (no claims); prorated after',
+    cancellationAddress: 'Ally Premier Protection Cancellations, P.O. Box 8102, Cockeysville, MD 21030',
     directBypassTip:
-      'You can submit cancellation directly via Ally Premier Protection customer support if the selling dealer stalls — include signed letter + odometer photo.',
-    requiredDocs: ['Signed Cancellation Request Letter', 'VIN & Contract Number', 'Photo of Current Odometer', 'Lender Name & Account # (if financed)'],
+      'Submit signed written cancellation + odometer photo directly to Ally Premier Protection Cancellations and CC your selling dealer F&I Director to lock in your effective date.',
+    requiredDocs: ['Signed Cancellation Request Letter', 'VIN & Contract Number', 'Photo of Current Odometer', 'Lender Name & Account #'],
     contactHint: '1-877-247-2559 • ally.com/auto/vehicle-protection',
-  },
-  {
-    id: 'fidelity-jma',
-    name: 'Fidelity Warranty Services / JM&A Group',
-    products: 'VSC (Platinum/Gold/Powertrain), GAP, Tire & Wheel, Road Hazard',
-    freeLookWindow: '30–60 days full refund (state dependent); prorated after',
-    directBypassTip:
-      'Fidelity often tells callers to go through the dealer first, BUT accepts direct written cancellation via Certified Mail / Cancellation Email when you state the dealer is unresponsive.',
-    requiredDocs: ['Signed Cancellation Letter', 'Copy of VSC/GAP Declaration Page', 'Odometer Statement / Dashboard Photo'],
-    contactHint: '1-800-327-5172 • fidelitywarrantyservices.com (Deerfield Beach, FL)',
   },
   {
     id: 'zurich',
     name: 'Zurich Vehicle Service Contracts & GAP',
     products: 'Extended Warranty, GAP Waiver, Shield/Appearance Plans',
     freeLookWindow: '30–60 days full refund; prorated after ($25–$50 max fee)',
+    cancellationAddress: 'Zurich F&I Cancellations, 7045 College Blvd, Overland Park, KS 66211',
     directBypassTip:
-      'Call Zurich Customer Care for their direct cancellation email/fax so your cancellation date is timestamped even while the dealer processes paperwork.',
+      'Request Zurich Customer Care\'s direct cancellation email/fax ticket and mail your signed notice so your effective mileage date is locked in immediately.',
     requiredDocs: ['Signed Cancellation Request', 'Contract # & VIN', 'Current Mileage Verification'],
     contactHint: '1-888-835-5063 • zurichna.com/auto',
   },
@@ -457,49 +461,186 @@ export const FI_ADMINISTRATORS: FiAdministratorInfo[] = [
     name: 'Toyota Financial Services (TFS) / Extra Care / GAP',
     products: 'Toyota Extra Care VSA, Prepaid Maintenance, TFS GAP',
     freeLookWindow: '30 days full refund (60 days CA/FL); prorated after',
+    cancellationAddress: 'Toyota Motor Insurance Services, Attn: Cancellations, P.O. Box 9550, Cedar Rapids, IA 52409',
     directBypassTip:
-      'TFS has one of the cleanest direct-cancellation channels — call or mail TFS Product Cancellation directly and bypass the F&I desk completely!',
+      'TFS has one of the cleanest direct-cancellation channels in the industry — mail or fax TFS Product Cancellation directly and bypass the F&I desk completely!',
     requiredDocs: ['Signed Cancellation Form/Letter', 'VIN & Agreement #', 'Current Odometer Reading'],
     contactHint: '1-800-228-8559 • toyotafinancial.com',
   },
   {
     id: 'ford-protect',
-    name: 'Ford Protect / Lincoln Protect',
-    products: 'PremiumCARE / ExtraCARE ESP, Maintenance, TireCARE',
+    name: 'Ford Protect / Lincoln Protect (ESP)',
+    products: 'PremiumCARE / ExtraCARE ESP, Maintenance, TireCARE, GAP',
     freeLookWindow: '30 days full refund (60 days CA/FL); prorated after',
+    cancellationAddress: 'Ford Protect Administration, Attn: ESP Cancellations, P.O. Box 6045, Dearborn, MI 48121',
     directBypassTip:
-      'If your dealer stalls, call Ford Protect HQ directly and ask for an Escalated Direct Cancellation ticket.',
+      'If your selling dealer stalls, call Ford Protect HQ directly and open an Escalated Direct Cancellation case with your signed letter.',
     requiredDocs: ['Signed Cancellation Notice', 'VIN & ESP Contract #', 'Odometer Statement'],
     contactHint: '1-800-392-3673 • fordprotect.ford.com',
   },
   {
+    id: 'honda-care',
+    name: 'American Honda Finance / Honda Care & Acura Care',
+    products: 'Honda Care VSC, Sentinel Maintenance, Honda GAP',
+    freeLookWindow: '60 days full refund (no claims); prorated after',
+    cancellationAddress: 'Honda Care Plan Administration, Attn: Cancellations, P.O. Box 2225, Torrance, CA 90509',
+    directBypassTip:
+      'Honda Care grants a generous 60-day full refund window nationwide and accepts direct written cancellation notices.',
+    requiredDocs: ['Signed Written Request', 'VIN & Honda Care Contract #', 'Current Odometer Statement'],
+    contactHint: '1-800-999-5901 • hondafinancialservices.com',
+  },
+  {
+    id: 'gm-protection',
+    name: 'GM Protection Plan / Chevrolet / GMC / Cadillac',
+    products: 'Platinum/Silver VSC, GAP, Pre-Paid Maintenance, Tire & Wheel',
+    freeLookWindow: '60 days full refund (no claims); prorated after',
+    cancellationAddress: 'GM Protections Cancellations (Amtel/Safe-Guard Admin), Two Concourse Pkwy, Suite 500, Atlanta, GA 30328',
+    directBypassTip:
+      'Check the fine print footer on page 1 (newer GM plans are administered by Safe-Guard/Amtel) and send written notice directly to the listed administrator.',
+    requiredDocs: ['Signed Cancellation Letter', 'VIN & Contract #', 'Odometer Photo'],
+    contactHint: '1-833-959-0105 • gm.com/protection',
+  },
+  {
+    id: 'nissan-nesna',
+    name: 'Nissan Security+Plus / Infiniti Elite Protection',
+    products: 'Gold/Silver Preferred VSC, Prepaid Maintenance, GAP',
+    freeLookWindow: '60 days full refund (no claims); prorated after',
+    cancellationAddress: 'Nissan Extended Services NA, Attn: Cancellations, P.O. Box 685004, Franklin, TN 37068',
+    directBypassTip:
+      'NESNA processes written cancellations directly by mail/fax when accompanied by a signed odometer statement.',
+    requiredDocs: ['Signed Cancellation Request', 'VIN & Policy #', 'Odometer Reading'],
+    contactHint: '1-800-647-7261 • nissanusa.com/owners',
+  },
+  {
+    id: 'hyundai-kia',
+    name: 'Hyundai Protection Plan / Kia Distinction',
+    products: 'Wrap/Powertrain VSC, GAP, Excess Wear, Tire & Wheel',
+    freeLookWindow: '30–60 days full refund; prorated after',
+    cancellationAddress: 'Hyundai Capital / Safe-Guard Cancellations, P.O. Box 88230, Atlanta, GA 30356',
+    directBypassTip:
+      'Send written cancellation directly to the plan administrator printed at the bottom of your agreement + CC your dealer F&I manager.',
+    requiredDocs: ['Signed Written Notice', 'VIN & Agreement #', 'Odometer Photo'],
+    contactHint: '1-800-477-8089 • hmfusa.com',
+  },
+  {
+    id: 'subaru-sas',
+    name: 'Subaru Added Security (SAS)',
+    products: 'Classic & Gold Plus Extended Plans, Equity Shield GAP',
+    freeLookWindow: '30–60 days full refund; prorated after',
+    cancellationAddress: 'Subaru of America, Attn: Added Security Cancellations, P.O. Box 6000, Cherry Hill, NJ 08034',
+    directBypassTip:
+      'Subaru Added Security is backed directly by Subaru of America and processes written owner cancellations cleanly.',
+    requiredDocs: ['Signed Cancellation Notice', 'VIN & Agreement #', 'Current Mileage'],
+    contactHint: '1-800-782-2783 • subaru.com',
+  },
+  {
     id: 'assurant',
-    name: 'Assurant / Resource Automotive / Protective',
+    name: 'Assurant / Resource Automotive / The Warranty Group',
     products: 'VSC, GAP Waiver, Appearance & Ancillary Bundles',
     freeLookWindow: '30–60 days full refund; prorated after',
+    cancellationAddress: 'Assurant Automotive Cancellations, P.O. Box 77199, Madison, WI 53707',
     directBypassTip:
       'Submit written cancellation directly to Assurant Cancellations and CC both the dealer F&I Director and your auto lender.',
     requiredDocs: ['Signed Written Request', 'VIN & Policy/Contract #', 'Current Odometer Photo'],
     contactHint: '1-800-358-0600 • assurant.com',
   },
   {
-    id: 'easycare',
-    name: 'EasyCare / APCO',
-    products: 'TotalCare / StatedCare VSC, GAP, KeyCare',
+    id: 'safe-guard',
+    name: 'Safe-Guard Products International',
+    products: 'OEM-Branded GAP, Tire & Wheel, VSC, Theft/Appearance Plans',
     freeLookWindow: '30–60 days full refund; prorated after',
+    cancellationAddress: 'Safe-Guard Products Intl, Attn: Cancellations, Two Concourse Pkwy, Suite 500, Atlanta, GA 30328',
     directBypassTip:
-      'Request EasyCare\'s direct Cancellation Form by phone and email it back with a photo of your odometer to lock in your effective date.',
+      'Safe-Guard administers private-label GAP & Tire/Wheel for over 15 major automakers (Audi, BMW, Mercedes, Hyundai, Mazda, VW) — check fine print for Safe-Guard!',
+    requiredDocs: ['Signed Cancellation Letter', 'VIN & Contract #', 'Odometer Statement'],
+    contactHint: '1-800-742-7896 • safe-guardproducts.com',
+  },
+  {
+    id: 'cna-national',
+    name: 'CNA National Warranty Corporation',
+    products: 'Automotive Preferred Care VSC, GAP, Tire & Wheel',
+    freeLookWindow: '30–60 days full refund; prorated after',
+    cancellationAddress: 'CNA National Warranty Corp, Attn: Cancellations, P.O. Box 2840, Scottsdale, AZ 85252',
+    directBypassTip:
+      'Send signed cancellation + odometer verification directly to CNA National in Scottsdale if the selling dealership fails to process within 10 business days.',
+    requiredDocs: ['Signed Request', 'Contract # & VIN', 'Odometer Photo'],
+    contactHint: '1-800-345-0191 • cnanational.com',
+  },
+  {
+    id: 'easycare',
+    name: 'EasyCare / APCO Holdings / GWC Warranty',
+    products: 'TotalCare / StatedCare VSC, GAP, KeyCare, Used-Car VSC',
+    freeLookWindow: '30–60 days full refund; prorated after',
+    cancellationAddress: 'APCO / EasyCare Cancellations, P.O. Box 80100, Atlanta, GA 30366',
+    directBypassTip:
+      'Request EasyCare/APCO\'s direct Cancellation Form or mail our signed notice with a dashboard odometer photo to lock in your effective date.',
     requiredDocs: ['Signed Request / Form', 'VIN & Contract #', 'Odometer Photo'],
     contactHint: '1-800-538-4181 • easycare.com',
   },
   {
-    id: 'carmax-maxcare',
-    name: 'CarMax MaxCare / Fidelity',
-    products: 'MaxCare Extended Service Plan & GAP',
-    freeLookWindow: '90 days full refund (CarMax policy!) / prorated after',
+    id: 'protective-aul',
+    name: 'Protective Asset Protection / AUL Corp',
+    products: 'Used & New Vehicle Service Contracts, GAP, Ancillary',
+    freeLookWindow: '30–60 days full refund; prorated after',
+    cancellationAddress: 'Protective Asset Protection, Attn: Cancellations, P.O. Box 770, Deerfield, IL 60015',
     directBypassTip:
-      'CarMax offers a generous 90-day full refund window on MaxCare (if no claims) and allows cancellation at any store business office or by mail.',
-    requiredDocs: ['Contract # & VIN', 'Current Odometer Reading', 'Photo ID / Signed Request'],
+      'Protective/AUL is huge at independent & franchise used lots; send written notice to both dealer & Protective HQ simultaneously.',
+    requiredDocs: ['Signed Cancellation Letter', 'VIN & Contract #', 'Current Odometer Statement'],
+    contactHint: '1-800-323-5771 • protectiveassetprotection.com',
+  },
+  {
+    id: 'portfolio',
+    name: 'Portfolio Protection / Portfolio Services',
+    products: 'Dealer Reinsurance VSC, GAP, Theft & Appearance Contracts',
+    freeLookWindow: '30–60 days full refund; prorated after',
+    cancellationAddress: 'Portfolio Services, Attn: Cancellations Dept., 25541 Commercentre Dr, Suite 100, Lake Forest, CA 92630',
+    directBypassTip:
+      'Dealer-owned reinsurance plans often push back hardest at the dealership — always send Certified Mail directly to Portfolio HQ + CC your State Insurance Dept. if stalled.',
+    requiredDocs: ['Signed Written Notice', 'Contract Declaration Copy', 'Odometer Photo'],
+    contactHint: '1-800-705-4001 • portfolioco.com',
+  },
+  {
+    id: 'first-extended',
+    name: 'First Extended Service Corp / Warrantech',
+    products: 'VSC, Powertrain, GAP & Dealer Ancillary Plans',
+    freeLookWindow: '30–60 days full refund; prorated after',
+    cancellationAddress: 'First Extended Service Corp, Attn: Cancellations, 2200 Highway 121, Suite 100, Bedford, TX 76021',
+    directBypassTip:
+      'Include your lienholder payoff address and current odometer photo so First Extended cannot delay processing for missing fields.',
+    requiredDocs: ['Signed Cancellation Letter', 'VIN & Contract #', 'Odometer Photo'],
+    contactHint: '1-800-527-3426 • firstextended.com',
+  },
+  {
+    id: 'endurance',
+    name: 'Endurance Warranty Services (Direct / Third-Party)',
+    products: 'Direct-to-Consumer Vehicle Service Contracts',
+    freeLookWindow: '30 days full refund (minus any claims); prorated after',
+    cancellationAddress: 'Endurance Warranty Services, Attn: Cancellations, 400 Skokie Blvd, Suite 105, Northbrook, IL 60062',
+    directBypassTip:
+      'Never rely solely on a phone call with retention reps — send a signed notarized/attested cancellation + odometer statement in writing to stop monthly billing.',
+    requiredDocs: ['Signed Cancellation Form/Letter', 'Contract # & VIN', 'Odometer Statement'],
+    contactHint: '1-866-432-4443 • endurancewarranty.com',
+  },
+  {
+    id: 'carshield',
+    name: 'CarShield / American Auto Shield',
+    products: 'Month-to-Month & Term Vehicle Service Contracts',
+    freeLookWindow: '30 days full refund; month-to-month cancel anytime in writing',
+    cancellationAddress: 'American Auto Shield (CarShield Admin), Attn: Cancellations, 1597 Cole Blvd, Suite 200, Lakewood, CO 80401',
+    directBypassTip:
+      'Send written cancellation directly to both CarShield AND the actual administrator (American Auto Shield) so recurring billing stops immediately.',
+    requiredDocs: ['Signed Written Notice', 'Contract # & VIN', 'Current Odometer'],
+    contactHint: '1-800-587-4162 • americanautoshield.com',
+  },
+  {
+    id: 'carmax-maxcare',
+    name: 'CarMax MaxCare (Administered by Fidelity / Assurant)',
+    products: 'MaxCare Extended Service Plan & CarMax GAP',
+    freeLookWindow: '90 days full refund (CarMax policy!) / prorated after',
+    cancellationAddress: 'CarMax Auto Superstores / Plan Administrator Listed on Page 1 of MaxCare Agreement',
+    directBypassTip:
+      'CarMax offers an industry-best 90-day full refund window on MaxCare (if no claims) and processes written cancellations cleanly at any store business office or by mail.',
+    requiredDocs: ['Contract # & VIN', 'Current Odometer Reading', 'Signed Request'],
     contactHint: '1-800-519-1511 • carmax.com',
   },
 ];
@@ -817,7 +958,17 @@ export function generateCancellationTemplates(
   const rule = STATE_AUTO_RULES[input.stateCode?.toUpperCase()] ?? STATE_AUTO_RULES.TX;
   const buyer = input.buyerName?.trim() || '[YOUR FULL NAME]';
   const dealer = input.dealerName?.trim() || '[DEALERSHIP NAME]';
-  const admin = input.administratorName?.trim() || '[PLAN ADMINISTRATOR NAME]';
+  const rawAdmin = input.administratorName?.trim() || '';
+  const matchedAdmin = FI_ADMINISTRATORS.find(
+    (a) =>
+      a.id === rawAdmin.toLowerCase() ||
+      a.name.toLowerCase().includes(rawAdmin.toLowerCase()) ||
+      rawAdmin.toLowerCase().includes(a.id)
+  );
+  const admin = matchedAdmin ? matchedAdmin.name : rawAdmin || '[PLAN ADMINISTRATOR NAME]';
+  const adminRoutingBlock = matchedAdmin
+    ? `Direct Administrator Mailing Address: ${matchedAdmin.cancellationAddress}\nAdministrator Phone / Reference: ${matchedAdmin.contactHint}\nBypass Guidance: ${matchedAdmin.directBypassTip}`
+    : `Direct Administrator Routing: Mail/email to the Administrator Cancellations Dept. address printed on Page 1 or the Cancellation Clause of your VSC/GAP contract.`;
   const lender = input.lenderName?.trim() || '[AUTO LENDER / LIENHOLDER NAME]';
   const vehicle = input.vehicleYmm?.trim() || '[YEAR MAKE MODEL]';
   const vin = input.vin?.trim() || '[17-DIGIT VIN]';
@@ -845,6 +996,7 @@ export function generateCancellationTemplates(
   const cancellationLetter = `Date: ${todayStr}
 
 TO: ${admin} (Cancellations Department)
+${adminRoutingBlock}
 CC: Finance & Insurance Director, ${dealer}
 CC: ${input.financedInLoan ? `Lienholder / Loan Servicing, ${lender}` : 'Buyer Personal Records'}
 

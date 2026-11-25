@@ -12,6 +12,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import { AuditWorkspace } from './AuditWorkspace';
+import { LockedGeneratorCard } from './LockedGeneratorCard';
 import { PartnerCard } from './PartnerCard';
 
 /* =====================================================================
@@ -199,28 +200,20 @@ export const InsuranceAuditPage: React.FC<{ states: any[] }> = ({ states }) => {
               ))}
             </div>
 
-            {/* Copy-Paste Zero-Spam Spec Sheet */}
-            <div className="rounded-xl border border-slate-200 bg-[#FAF9F5] p-5">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <span className="text-xs font-extrabold uppercase tracking-wider text-[#0F766E]">
-                  Your 1-Page Zero-Spam Apples-to-Apples Email Quote Request
-                </span>
-                <button
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(result.zeroSpamQuoteSpecText);
-                    setCopiedSpec(true);
-                    setTimeout(() => setCopiedSpec(false), 2000);
-                  }}
-                  className="inline-flex items-center gap-1 rounded-lg bg-[#0B1528] px-3 py-1.5 text-xs font-bold text-white"
-                >
-                  {copiedSpec ? <Check className="h-3.5 w-3.5 text-teal-300" /> : <Copy className="h-3.5 w-3.5" />}
-                  {copiedSpec ? 'Copied!' : 'Copy Quote Spec'}
-                </button>
-              </div>
-              <pre className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-4 font-sans text-xs leading-relaxed text-slate-700">
-                {result.zeroSpamQuoteSpecText}
-              </pre>
-            </div>
+            {/* Paywalled Zero-Spam Apples-to-Apples Quote Spec + Retention Script */}
+            {result.kit && (
+              <LockedGeneratorCard
+                kit={result.kit}
+                onKitUpdated={(updated) => setResult({ ...result, kit: updated })}
+                headline="Unlock Your 1-Page Zero-Spam Quote Request Email, Retention Script & PDF"
+                subheadline="Generated specifically for your liability limits, deductibles, and state — email directly to independent brokers without ever giving out your phone number."
+                bullets={[
+                  'Customized 1-Page Apples-to-Apples Email Quote Request Spec Sheet',
+                  'Current Insurer Retention / Underwriting Re-Tier Call & Chat Script',
+                  'Insurer Loan/Lease Payoff (~$5/mo GAP replacement) instructions + Branded PDF',
+                ]}
+              />
+            )}
           </div>
         )}
       </section>

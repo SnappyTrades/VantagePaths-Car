@@ -261,15 +261,28 @@ async function startServer() {
   app.post('/api/billing/checkout', async (req, res) => {
     try {
       const auditId = String(req.body?.auditId || '').trim();
-      const tier = req.body?.tier === 'pro' ? 'pro' : 'pass';
+      const rawTier = String(req.body?.tier || 'pass');
+      const tier: 'single' | 'pass' | 'pro' =
+        rawTier === 'single' ? 'single' : rawTier === 'pro' ? 'pro' : 'pass';
       const rec = db.getAudit(auditId);
       if (!rec) return res.status(404).json({ error: 'Audit record not found.' });
 
       const plan = VERTICAL_PRICING.auto;
-      const sku = tier === 'pro' ? plan.proSku : plan.passSku;
-      const unitAmountCents = (tier === 'pro' ? plan.proPriceUsd : plan.passPriceUsd) * 100;
-      const productName = tier === 'pro' ? plan.proName : plan.passName;
-      const productDesc = tier === 'pro' ? plan.proDescription : plan.passDescription;
+      const sku = tier === 'pro' ? plan.proSku : tier === 'single' ? 'SINGLE_GENERATOR' : plan.passSku;
+      const unitAmountCents =
+        (tier === 'pro' ? plan.proPriceUsd : tier === 'single' ? 14 : plan.passPriceUsd) * 100;
+      const productName =
+        tier === 'pro'
+          ? plan.proName
+          : tier === 'single'
+          ? 'Single Self-Service Letter / Email Kit Unlock'
+          : plan.passName;
+      const productDesc =
+        tier === 'pro'
+          ? plan.proDescription
+          : tier === 'single'
+          ? 'Unlocks this generated email/letter packet, direct routing instructions & downloadable PDF.'
+          : plan.passDescription;
 
       db.logEvent({
         eventName: 'checkout_clicked',
@@ -283,12 +296,17 @@ async function startServer() {
         return res.json({
           mode: 'demo',
           demoUnlockAllowed: true,
+          tier,
           message: 'STRIPE_SECRET_KEY is not set in .env — Demo Unlock mode is enabled for testing.',
         });
       }
 
       const configuredPriceId = getStripePriceIdForSku(sku);
-      const returnPath = rec.auditId.startsWith('vp_autorefund_') ? '/rescue' : '/buy';
+      const returnPath = rec.auditId.startsWith('vp_autorefund_')
+        ? '/rescue'
+        : rec.auditId.startsWith('vp_autoins_')
+        ? '/insurance'
+        : '/buy';
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
         line_items: configuredPriceId
@@ -398,6 +416,26 @@ async function startServer() {
     return res.json(toPublicAuditResponse(unlocked));
   });
 
+  // Billing: Redeem an already-unlocked $29 60-Day Pass across other generators
+  app.post('/api/billing/redeem-pass', (req, res) => {
+    const targetAuditId = String(req.body?.auditId || '').trim();
+    const passAuditId = String(req.body?.passAuditId || '').trim();
+    if (!targetAuditId || !passAuditId) {
+      return res.status(400).json({ error: 'auditId and passAuditId are required.' });
+    }
+    const existingPass = db.getAudit(passAuditId);
+    if (!existingPass || !existingPass.isUnlocked) {
+      return res.status(402).json({ error: 'Active unlocked 60-Day Pass not found.' });
+    }
+    const unlocked = db.markAuditUnlocked({
+      auditId: targetAuditId,
+      method: existingPass.unlockMethod || 'STRIPE_CHECKOUT',
+      stripeSessionId: existingPass.stripeSessionId,
+    });
+    if (!unlocked) return res.status(404).json({ error: 'Target kit not found.' });
+    return res.json(toPublicAuditResponse(unlocked));
+  });
+
   // Deterministic Auto Calculators & Reference Endpoints
   app.post('/api/calculators/auto', (req, res) => {
     const result = calculateAutoDeal(req.body || {});
@@ -405,11 +443,19 @@ async function startServer() {
     res.json(result);
   });
 
+  // Public Reference: Exposes searchable provider names & free-look windows, while redacting
+  // direct-bypass cancellation routing addresses & phone lines (unlocked inside paid Cancellation Kit!)
   app.get('/api/auto/reference', (_req, res) => {
     res.json({
       addons: AUTO_ADDONS_GUIDE,
       states: Object.values(STATE_AUTO_RULES),
-      administrators: FI_ADMINISTRATORS,
+      administrators: FI_ADMINISTRATORS.map((a) => ({
+        id: a.id,
+        name: a.name,
+        products: a.products,
+        freeLookWindow: a.freeLookWindow,
+        requiredDocs: a.requiredDocs,
+      })),
       resources: AUTO_CONSUMER_RESOURCES,
     });
   });
@@ -546,16 +592,191 @@ async function startServer() {
     return res.json({ rescue, kit: toPublicAuditResponse(stored) });
   });
 
+  // Pillar 1: Paywalled Multi-Dealer Bid-War Email Generator (Round 1 + Round 2 + Express Pickup Script)
+  app.post('/api/auto/bidwar-kit', (req, res) => {
+    const body = req.body || {};
+    const vehicle = String(body.targetVehicle || '2026 Toyota RAV4 Hybrid XLE').trim().slice(0, 120);
+    const zip = String(body.zipCode || '75024').trim().slice(0, 10);
+    const homeState = String(body.homeState || 'TX').toUpperCase().slice(0, 2);
+    const stateRule = STATE_AUTO_RULES[homeState] ?? STATE_AUTO_RULES.TX;
+    const bestDealer = String(body.bestDealerName || 'Competing Metro Dealership').trim().slice(0, 100);
+    const bestOtd = Math.max(5000, Number(body.bestOtdUsd) || 38385);
+    const highestOtd = Math.max(bestOtd, Number(body.highestOtdUsd) || bestOtd + 3200);
+    const targetBeatOtd = Math.max(4500, bestOtd - 500);
+    const estSavings = Math.max(850, highestOtd - targetBeatOtd);
+
+    const round1Subject = `Ready to Buy This Week — Requesting Itemized Out-The-Door Quote (${vehicle})`;
+    const round1Script = `Hi Internet Sales Manager,
+
+I am ready to purchase a ${vehicle} within the next 7 days and already have outside financing pre-approved. I am contacting 5 dealerships in the ${stateRule.name} region by email only (no phone calls please) and will place a deposit with whichever store sends the cleanest written Out-The-Door (OTD) breakdown.
+
+Please reply with an itemized OTD quote showing:
+1. Vehicle Selling Price (before tax & fees)
+2. Dealer-installed add-ons ($0 — I am declining paint/nitrogen/VIN etch/security packages)
+3. Dealer Documentation Fee (${
+      stateRule.docFeeCapUsd !== null
+        ? `${stateRule.name} statutory cap: $${stateRule.docFeeCapUsd}`
+        : 'please state exact doc/admin fee'
+    })
+4. Sales Tax (for ZIP ${zip}) & Government DMV Title/Registration
+5. Total Out-The-Door Price + availability for remote e-signing / 15-minute express pickup or delivery
+
+Thank you,
+[Your Name]`;
+
+    const round2Script = `Subject: Re: ${vehicle} — Ready to Place Deposit Today at $${targetBeatOtd.toLocaleString()} OTD
+
+Hi [Sales Manager],
+
+Thank you for sending your numbers. I currently hold a written clean OTD quote from ${bestDealer} at $${bestOtd.toLocaleString()} all-in with $0 in dealer add-ons.
+
+If you can beat that at $${targetBeatOtd.toLocaleString()} Out-The-Door (zero optional add-ons) and email me the final itemized Buyer's Order & Truth-in-Lending contract PDF to review from home first, I will put down a deposit today and schedule an express sign-and-drive pickup (or home delivery).
+
+Let me know by 5:00 PM today if you want to lock this deal in.
+
+Best,
+[Your Name]`;
+
+    const auditId = `vp_autobid_${crypto.randomBytes(5).toString('hex')}`;
+    const stored: StoredAuditRecord = {
+      auditId,
+      vertical: 'auto',
+      createdUtc: new Date().toISOString(),
+      fileName: `Remote 5-Dealer Bid-War Kit (${vehicle})`,
+      mimeType: 'application/json',
+      documentSummary: `Custom remote negotiation packet for ${vehicle} in ${stateRule.name} (ZIP ${zip}). Targets $${targetBeatOtd.toLocaleString()} clean OTD — ~$${estSavings.toLocaleString()} below highest dealer quote.`,
+      verdictLabel: `Target Clean OTD: $${targetBeatOtd.toLocaleString()} (Save ~$${estSavings.toLocaleString()})`,
+      verdictTone: 'high_risk',
+      estimatedSavingsUsd: estSavings,
+      billedTotalUsd: highestOtd,
+      fairRangeLabel: `$${targetBeatOtd.toLocaleString()} – $${bestOtd.toLocaleString()} Clean OTD`,
+      freeFlags: [
+        {
+          level: 'INFO',
+          title: `${stateRule.name} Doc Fee Rule Applied Automatically`,
+          detail:
+            stateRule.docFeeCapUsd !== null
+              ? `${stateRule.name} caps dealer documentation fees at $${stateRule.docFeeCapUsd} by statute.`
+              : `${stateRule.name} has uncapped doc fees (~$${stateRule.typicalDocFeeUsd} avg) — scripts demand offsetting selling-price discounts.`,
+          estimatedImpactUsd: null,
+        },
+      ],
+      lockedFlags: [
+        {
+          level: 'CRITICAL',
+          title: 'Round 2 "Beat My Lowest Quote" Closing Counter-Email Included',
+          detail: round2Script,
+          estimatedImpactUsd: 500,
+        },
+        {
+          level: 'INFO',
+          title: 'Pre-Delivery Final Contract Demand & 15-Minute Express Pickup Script',
+          detail: `Hi [F&I Manager] — Before I drive over (or e-sign), please email the final Retail Installment Contract (TILA) PDF confirming $${targetBeatOtd.toLocaleString()} OTD, zero VSC/GAP/ancillary add-ons, and my agreed APR so pickup takes under 15 minutes.`,
+          estimatedImpactUsd: null,
+        },
+      ],
+      lineItems: [
+        { label: 'Highest Quoted Dealer OTD', quotedAmount: `$${highestOtd.toLocaleString()}`, benchmarkAmount: `$${bestOtd.toLocaleString()} Best`, status: 'OVERCHARGED' },
+        { label: 'Round 2 Target Counter-Offer', quotedAmount: `$${bestOtd.toLocaleString()}`, benchmarkAmount: `$${targetBeatOtd.toLocaleString()} Target`, status: 'FAIR' },
+      ],
+      counterOfferSubject: round1Subject,
+      counterOfferScript: round1Script,
+      negotiationChecklist: [
+        'Send Round 1 BCC or individually to 5 dealership Internet Sales Managers within 100–200 miles.',
+        'Log every reply in your VantagePaths Bid Board and refuse phone calls until an itemized OTD is emailed.',
+        'Send Round 2 to the 2nd- and 3rd-lowest dealers — let them undercut your #1 quote by $500+.',
+      ],
+      deterministicMetrics: [
+        { label: 'Best Current OTD', value: `$${bestOtd.toLocaleString()}` },
+        { label: 'Round 2 Target OTD', value: `$${targetBeatOtd.toLocaleString()}` },
+      ],
+      reasoningProvider: 'DETERMINISTIC_FALLBACK',
+      llmProvider: null,
+      modelUsed: 'Bid-War Script Generator',
+      isUnlocked: false,
+      unlockedUtc: null,
+      unlockMethod: null,
+      stripeSessionId: null,
+    };
+
+    db.saveAudit(stored);
+    db.logEvent({ eventName: 'audit_completed', vertical: 'auto', auditId, metadata: { tool: 'bidwar_kit' } });
+    return res.json({ kit: toPublicAuditResponse(stored) });
+  });
+
   app.post('/api/auto/out-of-state', (req, res) => {
     const result = calculateOutOfStateSavings(req.body || {});
     db.logEvent({ eventName: 'calculator_used', vertical: 'auto', metadata: { tool: 'out_of_state' } });
     res.json(result);
   });
 
+  // Pillar 3: Zero-Spam Insurance Audit (Free Diagnostic Math + Paywalled Quote Spec & Retention Script!)
   app.post('/api/auto/insurance-audit', (req, res) => {
-    const result = analyzeInsurancePolicy(req.body || {});
-    db.logEvent({ eventName: 'calculator_used', vertical: 'auto', metadata: { tool: 'insurance_audit' } });
-    res.json(result);
+    const input = req.body || {};
+    const full = analyzeInsurancePolicy(input);
+    const auditId = `vp_autoins_${crypto.randomBytes(5).toString('hex')}`;
+
+    const stored: StoredAuditRecord = {
+      auditId,
+      vertical: 'auto',
+      createdUtc: new Date().toISOString(),
+      fileName: 'Zero-Spam Auto Insurance Quote Spec & Retention Packet',
+      mimeType: 'application/json',
+      documentSummary: `Policy audit ($${full.annualPremiumUsd.toLocaleString()}/yr, ${
+        full.renewalHikePct >= 0 ? `+${full.renewalHikePct}%` : `${full.renewalHikePct}%`
+      } change). Unlocks your 1-page Apples-to-Apples Email Quote Request + Current Carrier Rate-Match Script.`,
+      verdictLabel: `Est. ~$${full.estimatedAnnualTotalSavingsUsd.toLocaleString()}/yr Insurance Savings Identified`,
+      verdictTone: full.loyaltyPenaltyFlag ? 'high_risk' : 'moderate_risk',
+      estimatedSavingsUsd: full.estimatedAnnualTotalSavingsUsd,
+      billedTotalUsd: full.annualPremiumUsd,
+      fairRangeLabel: `Save ~$${full.estimatedAnnualTotalSavingsUsd.toLocaleString()}/yr Re-Shopping`,
+      freeFlags: full.flags.slice(0, 2).map((f) => ({ ...f, estimatedImpactUsd: null })),
+      lockedFlags: [
+        ...full.flags.slice(2).map((f) => ({ ...f, estimatedImpactUsd: null })),
+        {
+          level: 'INFO',
+          title: 'Current Insurer Retention / Rate-Match Call & Chat Script Included',
+          detail: `Hi Policy Retention Team — My 6-month renewal jumped to $${
+            input.currentSixMonthPremiumUsd || 1248
+          } despite zero claims/tickets. Before I bind an identical ${
+            input.biPdLimits || '100/300/100'
+          } policy with an independent carrier, please re-rate my policy into your newest underwriting tier, remove carrier roadside, raise collision deductible to $1,000, and apply paid-in-full / defensive-driver discounts.`,
+          estimatedImpactUsd: null,
+        },
+      ],
+      lineItems: [
+        { label: 'Annualized Renewal Spend', quotedAmount: `$${full.annualPremiumUsd.toLocaleString()}/yr`, benchmarkAmount: `~$${Math.max(600, full.annualPremiumUsd - full.estimatedAnnualTotalSavingsUsd).toLocaleString()}/yr`, status: 'OVERCHARGED' },
+      ],
+      counterOfferSubject: 'Apples-to-Apples Auto Insurance Quote Request (Email Only — No Phone Calls)',
+      counterOfferScript: full.zeroSpamQuoteSpecText,
+      negotiationChecklist: [
+        'Email the unlocked 1-Page Quote Spec to 3 local independent insurance brokers (they shop 10+ carriers without selling your phone number).',
+        'Ask your current insurer\'s Retention Department to re-tier your policy using the included script.',
+        'Confirm new policy + ~$5/mo Loan/Lease Payoff (GAP) is active BEFORE cancelling your old policy or dealership GAP.',
+      ],
+      deterministicMetrics: [
+        { label: 'Annual Spend', value: `$${full.annualPremiumUsd.toLocaleString()}/yr` },
+        { label: 'Renewal Jump', value: `${full.renewalHikePct >= 0 ? '+' : ''}${full.renewalHikePct}%` },
+        { label: 'Est. Annual Savings', value: `~$${full.estimatedAnnualTotalSavingsUsd.toLocaleString()}/yr` },
+      ],
+      reasoningProvider: 'DETERMINISTIC_FALLBACK',
+      llmProvider: null,
+      modelUsed: 'Insurance Spec Generator',
+      isUnlocked: false,
+      unlockedUtc: null,
+      unlockMethod: null,
+      stripeSessionId: null,
+    };
+
+    db.saveAudit(stored);
+    db.logEvent({ eventName: 'audit_completed', vertical: 'auto', auditId, metadata: { tool: 'insurance_kit' } });
+
+    // Strip zeroSpamQuoteSpecText from free response — strictly unlocked via fee!
+    const { zeroSpamQuoteSpecText: _redacted, ...freeAnalysis } = full;
+    res.json({
+      ...freeAnalysis,
+      kit: toPublicAuditResponse(stored),
+    });
   });
 
   app.post('/api/auto/sell-exit', (req, res) => {

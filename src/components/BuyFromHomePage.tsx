@@ -17,6 +17,7 @@ import {
 import type { PublicAuditResponse } from '../shared/types';
 import { AuditWorkspace } from './AuditWorkspace';
 import { CarHunterSection } from './CarHunterSection';
+import { LockedGeneratorCard } from './LockedGeneratorCard';
 import { PartnerCard } from './PartnerCard';
 
 interface StateRule {
@@ -54,8 +55,10 @@ export const BuyFromHomePage: React.FC<Props> = ({ states, initialAudit = null }
   const [homeState, setHomeState] = useState('TX');
   const [targetVehicle, setTargetVehicle] = useState('2026 Toyota RAV4 Hybrid XLE AWD');
   const [zipCode, setZipCode] = useState('75024');
-  const [copiedRound1, setCopiedRound1] = useState(false);
-  const [copiedRound2, setCopiedRound2] = useState(false);
+  const [bidWarKit, setBidWarKit] = useState<PublicAuditResponse | null>(
+    initialAudit && initialAudit.auditId.startsWith('vp_autobid_') ? initialAudit : null
+  );
+  const [generatingBidKit, setGeneratingBidKit] = useState(false);
 
   const [quotes, setQuotes] = useState<DealerQuoteRow[]>([
     { id: '1', dealerName: 'Local Dealer A (Suncrest)', sellingPrice: 37985, addOns: 2789, docFee: 995, taxAndDmv: 2980 },
@@ -114,44 +117,29 @@ export const BuyFromHomePage: React.FC<Props> = ({ states, initialAudit = null }
   }, [quotes, activeStateRule]);
 
   const bestQuote = rankedQuotes[0];
+  const worstQuote = rankedQuotes[rankedQuotes.length - 1];
 
-  const round1Email = `Subject: Ready to Buy This Week — Requesting Itemized Out-The-Door Quote (${targetVehicle})
-
-Hi Internet Sales Manager,
-
-I am ready to buy a ${targetVehicle} within the next 7 days and already have outside financing arranged. I am contacting 5 dealerships by email only (no phone calls please) and will buy from the store that sends the cleanest written Out-The-Door (OTD) quote.
-
-Please reply with an itemized OTD breakdown showing:
-1. Vehicle Selling Price (before tax & fees)
-2. Any dealer-installed add-ons (I am declining paint/nitrogen/VIN etch/security packages)
-3. Dealer Documentation Fee
-4. Estimated Sales Tax (for ZIP ${zipCode}) & Government DMV Title/Reg
-5. Total Out-The-Door Price + availability for e-sign / express pickup or home delivery
-
-If your written OTD quote is competitive, I can place a deposit and finalize paperwork remotely.
-
-Thank you,
-[Your Name]`;
-
-  const round2CounterEmail = `Subject: Re: ${targetVehicle} — Ready to Put Down a Deposit Today
-
-Hi [Sales Manager],
-
-Thank you for sending your breakdown. Right now I have a written clean OTD quote from a competing dealership (${
-    bestQuote?.dealerName || 'Competing Dealer'
-  }) at $${(bestQuote?.quotedOtd || 38385).toLocaleString()} OTD with $${(
-    bestQuote?.addOns || 0
-  ).toLocaleString()} in add-ons.
-
-If you can beat that at $${Math.max(
-    1000,
-    (bestQuote?.quotedOtd || 38385) - 500
-  ).toLocaleString()} all-in OTD (zero dealer add-ons) and email me the final Buyer's Order PDF to review from home, I will place a deposit today and do a 15-minute express pickup (or home delivery).
-
-Let me know if you can earn my business today.
-
-Best,
-[Your Name]`;
+  const generateBidWarEmails = async () => {
+    setGeneratingBidKit(true);
+    try {
+      const res = await fetch('/api/auto/bidwar-kit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetVehicle,
+          zipCode,
+          homeState,
+          bestDealerName: bestQuote?.dealerName || 'Competing Metro Dealer',
+          bestOtdUsd: bestQuote?.quotedOtd || 38385,
+          highestOtdUsd: worstQuote?.quotedOtd || 43500,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.kit) setBidWarKit(data.kit);
+    } finally {
+      setGeneratingBidKit(false);
+    }
+  };
 
   const runOos = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -527,52 +515,34 @@ Best,
           </div>
         </div>
 
-        {/* Round 1 & Round 2 Emails */}
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-[#FAF9F5] p-4">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#0B1528]">
-                <Mail className="h-3.5 w-3.5 text-[#0F766E]" /> Round 1: 5-Dealer OTD Solicitation Email
-              </span>
-              <button
-                onClick={async () => {
-                  await navigator.clipboard.writeText(round1Email);
-                  setCopiedRound1(true);
-                  setTimeout(() => setCopiedRound1(false), 2000);
-                }}
-                className="inline-flex items-center gap-1 rounded-lg bg-[#0F766E] px-2.5 py-1 text-[11px] font-bold text-white"
-              >
-                {copiedRound1 ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                {copiedRound1 ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-            <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-3 font-sans text-[11.5px] leading-relaxed text-slate-700">
-              {round1Email}
-            </pre>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 bg-[#FAF9F5] p-4">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-extrabold text-[#0B1528]">
-                <Sparkles className="h-3.5 w-3.5 text-amber-600" /> Round 2: "Beat My Lowest Quote" Counter-Email
-              </span>
-              <button
-                onClick={async () => {
-                  await navigator.clipboard.writeText(round2CounterEmail);
-                  setCopiedRound2(true);
-                  setTimeout(() => setCopiedRound2(false), 2000);
-                }}
-                className="inline-flex items-center gap-1 rounded-lg bg-[#0B1528] px-2.5 py-1 text-[11px] font-bold text-white"
-              >
-                {copiedRound2 ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                {copiedRound2 ? 'Copied' : 'Copy'}
-              </button>
-            </div>
-            <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-lg border border-slate-200 bg-white p-3 font-sans text-[11.5px] leading-relaxed text-slate-700">
-              {round2CounterEmail}
-            </pre>
-          </div>
-        </div>
+        {/* Server-Paywalled Round 1 & Round 2 Bid-War Email Generator */}
+        {!bidWarKit ? (
+          <button
+            type="button"
+            disabled={generatingBidKit}
+            onClick={generateBidWarEmails}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#05A66B] px-6 py-3.5 text-sm font-extrabold text-white shadow-md transition hover:bg-[#048A58] disabled:opacity-50"
+          >
+            <Mail className="h-4 w-4" />
+            {generatingBidKit
+              ? 'Generating Custom Bid-War Emails...'
+              : `Generate My Round 1 & Round 2 Bid-War Emails for "${targetVehicle}"`}
+          </button>
+        ) : (
+          <LockedGeneratorCard
+            kit={bidWarKit}
+            onKitUpdated={setBidWarKit}
+            headline={`Unlock Your Custom 5-Dealer Bid-War Emails & Express-Pickup Script`}
+            subheadline={`Built for ${targetVehicle} in ${homeState} (ZIP ${zipCode}) — pits competing Internet Sales Managers against ${
+              bestQuote?.dealerName || 'your lowest quote'
+            } ($${(bestQuote?.quotedOtd || 38385).toLocaleString()} OTD).`}
+            bullets={[
+              `Round 1: 5-Dealer Blind OTD Solicitation Email (auto-cites ${homeState} doc fee rules)`,
+              `Round 2: "Undercut $${(bestQuote?.quotedOtd || 38385).toLocaleString()} by $500 Today" Closing Counter-Email`,
+              'Pre-Delivery Final TILA Contract Request & 15-Minute Express Pickup Script + Branded PDF',
+            ]}
+          />
+        )}
       </section>
 
       {/* STEP 4: OUT-OF-STATE BUYING + 4-SQUARE BS-DETECTOR */}
