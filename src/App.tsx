@@ -251,8 +251,8 @@ const EditorialHomePage: React.FC<{ navigate: (path: string) => void; states: an
             <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3.5 py-1 text-xs font-bold text-[#0F766E]">
               <ShieldCheck className="h-3.5 w-3.5" /> 100% Independent • 50-State Coverage • Zero Dealer Kickbacks
             </span>
-            <h1 className="font-serif-display text-4xl font-bold leading-[1.08] tracking-tight text-[#0B1528] sm:text-5xl">
-              Do everything you <em className="text-[#0F766E]">hate</em> about owning a car — smarter, from your couch.
+            <h1 className="font-display text-4xl font-extrabold leading-[1.06] tracking-tight text-[#0B1528] sm:text-5xl">
+              Do everything you <span className="text-[#0F766E] underline decoration-teal-300 decoration-4 underline-offset-4">hate</span> about owning a car — smarter, from your couch.
             </h1>
             <p className="text-base leading-relaxed text-slate-600">
               Skip 4-hour dealership traps and insurance spam calls. VantagePaths gives you the exact tools to <strong>buy a car 95% online</strong>, <strong>cancel $2k–$5k in regretted warranties &amp; GAP</strong> to unlock refinancing, <strong>audit your insurance every 6 months</strong>, and <strong>sell for max cash</strong>.
