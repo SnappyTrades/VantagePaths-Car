@@ -71,3 +71,58 @@
 .vp-btn-midnight:hover {
   background: linear-gradient(135deg, #0b2545 0%, #0f766e 100%);
 }
+
+/* Mockup-Matched 6-Path Showcase Card Styles */
+.vp-flagship-card {
+  background: linear-gradient(180deg, #07263b 0%, #061b2e 55%, #041322 100%);
+  border: 2px solid rgba(94, 234, 212, 0.72);
+  box-shadow:
+    0 0 0 1px rgba(74, 222, 181, 0.25),
+    0 0 34px rgba(52, 211, 153, 0.34),
+    0 24px 52px -12px rgba(4, 18, 34, 0.65);
+}
+.vp-flagship-card:hover {
+  border-color: rgba(94, 234, 212, 0.95);
+  box-shadow:
+    0 0 0 1px rgba(94, 234, 212, 0.45),
+    0 0 44px rgba(52, 211, 153, 0.48),
+    0 28px 60px -12px rgba(4, 18, 34, 0.75);
+}
+
+.vp-btn-mint-glow {
+  background: linear-gradient(90deg, #5ff5b4 0%, #4ce6a8 50%, #5eead4 100%);
+  color: #04241c;
+  box-shadow: 0 8px 24px -4px rgba(76, 230, 168, 0.45);
+}
+.vp-btn-mint-glow:hover {
+  background: linear-gradient(90deg, #6efac0 0%, #5bf0b4 50%, #72f2de 100%);
+  box-shadow: 0 12px 28px -4px rgba(76, 230, 168, 0.6);
+}
+
+.vp-ice-path-card {
+  background: linear-gradient(180deg, #dceef9 0%, #eef6fc 38%, #ffffff 75%);
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 22px 48px -14px rgba(6, 28, 54, 0.16),
+    0 4px 12px -4px rgba(6, 28, 54, 0.05);
+}
+.vp-ice-path-card:hover {
+  box-shadow:
+    0 28px 60px -12px rgba(6, 28, 54, 0.24),
+    0 6px 16px -4px rgba(6, 28, 54, 0.08);
+}
+
+.vp-btn-deep-ocean {
+  background: linear-gradient(90deg, #062743 0%, #083a58 52%, #064e55 100%);
+  color: #ffffff;
+  box-shadow: 0 10px 22px -6px rgba(6, 39, 67, 0.45);
+}
+.vp-btn-deep-ocean:hover {
+  background: linear-gradient(90deg, #083358 0%, #0b496e 52%, #08636b 100%);
+  box-shadow: 0 14px 26px -6px rgba(6, 39, 67, 0.55);
+}
+
+/* Smooth hero-to-ice-mist backdrop behind the 6-card showcase */
+.vp-paths-backdrop {
+  background: linear-gradient(180deg, transparent 0%, #d8e9f5 32%, #eaf3fa 75%, transparent 100%);
+}

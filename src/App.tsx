@@ -19,6 +19,13 @@ import {
   ReceiptText,
   BookOpen,
   Zap,
+  Crown,
+  Wrench,
+  Wifi,
+  CreditCard,
+  Settings,
+  Scale,
+  CheckSquare,
 } from 'lucide-react';
 import { LifeVerticalPage, type LifeVerticalId } from './components/LifeVerticalPage';
 import type { PublicAuditResponse } from './shared/types';
@@ -278,7 +285,9 @@ const BRAND_PATHS: Array<{
   path: string;
   short: string;
   label: string;
+  imageSrc: string;
   icon: React.ReactNode;
+  tryIcon: React.ReactNode;
   desc: string;
   liveTool: string;
   status: string;
@@ -288,60 +297,72 @@ const BRAND_PATHS: Array<{
     path: '/auto',
     short: 'Auto',
     label: 'Auto',
-    icon: <Car className="h-5 w-5" />,
+    imageSrc: '/images/path-auto.jpg',
+    icon: <Car className="h-6 w-6" />,
+    tryIcon: <Wrench className="h-4 w-4 text-[#4CE6A8]" />,
     desc: 'Buy, finance, insure and sell your vehicle.',
     liveTool: 'Warranty & GAP refunds, dealer bid-wars, VIN checks, insurance audit',
-    status: 'Flagship • 12+ tools',
+    status: '12+ TOOLS',
   },
   {
     id: 'home',
     path: '/home',
     short: 'Home',
     label: 'Home',
-    icon: <HouseIcon className="h-5 w-5" />,
+    imageSrc: '/images/path-home.jpg',
+    icon: <HouseIcon className="h-6 w-6" />,
+    tryIcon: <Wifi className="h-4 w-4 text-[#084C61]" />,
     desc: 'Compare utilities, internet and household services.',
     liveTool: 'Internet & Cable Bill Negotiator',
-    status: 'Live',
+    status: 'LIVE',
   },
   {
     id: 'money',
     path: '/money',
     short: 'Money',
     label: 'Money',
-    icon: <Wallet className="h-5 w-5" />,
+    imageSrc: '/images/path-money.jpg',
+    icon: <Wallet className="h-6 w-6" />,
+    tryIcon: <CreditCard className="h-4 w-4 text-[#084C61]" />,
     desc: 'Reduce expenses, negotiate bills and compare financial products.',
     liveTool: 'Credit Card APR Reduction & Fee Reversal',
-    status: 'Live',
+    status: 'LIVE',
   },
   {
     id: 'tech',
     path: '/tech',
     short: 'Tech',
     label: 'Technology',
-    icon: <MonitorSmartphone className="h-5 w-5" />,
+    imageSrc: '/images/path-tech.jpg',
+    icon: <MonitorSmartphone className="h-6 w-6" />,
+    tryIcon: <Settings className="h-4 w-4 text-[#084C61]" />,
     desc: 'Simplify devices, software and everyday digital problems.',
     liveTool: 'Cell Phone Plan Right-Sizer',
-    status: 'Live',
+    status: 'LIVE',
   },
   {
     id: 'protect',
     path: '/protect',
     short: 'Protect',
     label: 'Consumer Protection',
-    icon: <ShieldCheck className="h-5 w-5" />,
+    imageSrc: '/images/path-protect.jpg',
+    icon: <ShieldCheck className="h-6 w-6" />,
+    tryIcon: <Scale className="h-4 w-4 text-[#084C61]" />,
     desc: 'Understand contracts, refunds, warranties and disputes.',
     liveTool: 'Charge Dispute & Refund Builder',
-    status: 'Live',
+    status: 'LIVE',
   },
   {
     id: 'life',
     path: '/life',
     short: 'Everyday Life',
     label: 'Everyday Life',
-    icon: <ReceiptText className="h-5 w-5" />,
+    imageSrc: '/images/path-life.svg',
+    icon: <ReceiptText className="h-6 w-6" />,
+    tryIcon: <CheckSquare className="h-4 w-4 text-[#084C61]" />,
     desc: 'Cancel subscriptions, handle paperwork and eliminate unnecessary expenses.',
     liveTool: 'Subscription Cancellation Center',
-    status: 'Live',
+    status: 'LIVE',
   },
 ];
 
@@ -386,10 +407,10 @@ const BrandHomePage: React.FC<{ navigate: (path: string) => void }> = ({ navigat
         </svg>
 
         <div className="relative z-10 mx-auto max-w-7xl px-4 text-center sm:px-6">
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.08] px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-teal-300 backdrop-blur-md">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" /> Smarter from your couch
-          </span>
-          <h1 className="font-display mx-auto mt-6 max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.6rem]">
+          <div className="mb-2 flex justify-center">
+            <VantagePathsLogo theme="dark" size="lg" showTagline />
+          </div>
+          <h1 className="font-display mx-auto mt-5 max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.5rem]">
             Life is complicated enough.
             <span className="mt-1 block bg-gradient-to-r from-[#2DD4BF] via-[#34D399] to-[#38BDF8] bg-clip-text text-transparent">
               Getting things done shouldn't be.
@@ -412,67 +433,161 @@ const BrandHomePage: React.FC<{ navigate: (path: string) => void }> = ({ navigat
               Check My Car Warranty Refund
             </button>
           </div>
-          <div className="mx-auto mt-8 flex max-w-3xl flex-wrap justify-center gap-x-6 gap-y-2 text-xs font-semibold text-slate-300">
-            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> Free calculators, always</span>
-            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> Zero spam — we never sell your number</span>
-            <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-emerald-300" /> You stay in control of every send</span>
+          {/* Top 3-Pillar Trust Bar matching attached mockup */}
+          <div className="mx-auto mt-10 inline-flex flex-wrap items-center justify-center gap-x-6 gap-y-2.5 border-t border-white/10 pt-6 text-xs font-bold text-slate-100 sm:text-[13px]">
+            <span className="inline-flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-[#4CE6A8]" /> Free calculators, always
+            </span>
+            <span className="hidden h-4 w-px bg-white/20 sm:inline-block" />
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-[#4CE6A8]" /> Zero spam — we never sell your number
+            </span>
+            <span className="hidden h-4 w-px bg-white/20 sm:inline-block" />
+            <span className="inline-flex items-center gap-2">
+              <Zap className="h-4 w-4 text-[#4CE6A8]" /> You stay in control of every send
+            </span>
           </div>
         </div>
       </section>
 
-      {/* SIX PATHS */}
-      <section id="paths" className="relative z-20 mx-auto -mt-24 max-w-7xl scroll-mt-28 px-4 sm:px-6">
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {BRAND_PATHS.map((p) => {
-            const flagship = p.id === 'auto';
-            return (
-              <button
-                key={p.id}
-                onClick={() => navigate(p.path)}
-                className={`group flex flex-col justify-between rounded-[26px] border p-6 text-left transition duration-300 hover:-translate-y-1 ${
-                  flagship
-                    ? 'vp-hero-canvas border-teal-400/40 text-white shadow-[0_28px_60px_-15px_rgba(6,24,46,0.5)]'
-                    : 'border-white bg-white text-[#071930] shadow-[0_22px_50px_-14px_rgba(6,24,46,0.16)] hover:shadow-[0_28px_60px_-12px_rgba(6,24,46,0.25)]'
-                }`}
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div
-                      className={`flex h-11 w-11 items-center justify-center rounded-2xl ${
-                        flagship ? 'bg-white/10 text-teal-300 ring-1 ring-white/20' : 'bg-emerald-50 text-[#059669] ring-1 ring-emerald-200/80'
-                      }`}
-                    >
-                      {p.icon}
+      {/* SIX PATHS — EXACT MOCKUP 3x2 SHOWCASE GRID */}
+      <div className="vp-paths-backdrop pb-6">
+        <section id="paths" className="relative z-20 mx-auto -mt-24 max-w-7xl scroll-mt-28 px-4 sm:px-6">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {BRAND_PATHS.map((p) => {
+              const flagship = p.id === 'auto';
+              if (flagship) {
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => navigate(p.path)}
+                    className="vp-flagship-card group relative flex flex-col justify-between overflow-hidden rounded-[28px] text-left text-white transition duration-300 hover:-translate-y-1.5"
+                  >
+                    <div>
+                      {/* Top Illustration Header + Dual Floating Badges */}
+                      <div className="relative h-48 w-full overflow-hidden bg-[#051B2C]">
+                        <img
+                          src={p.imageSrc}
+                          alt={p.label}
+                          className="h-full w-full scale-[1.15] object-cover object-center transition duration-500 group-hover:scale-[1.21]"
+                        />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#061B2E] via-[#061B2E]/25 to-transparent" />
+
+                        {/* Top-Left Crown FLAGSHIP Badge */}
+                        <span className="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/35 bg-[#062830]/85 px-3 py-1 text-[10.5px] font-extrabold uppercase tracking-wider text-white backdrop-blur-md">
+                          <Crown className="h-3.5 w-3.5 text-amber-300" /> FLAGSHIP
+                        </span>
+
+                        {/* Top-Right 12+ TOOLS Badge */}
+                        <span className="absolute right-4 top-4 inline-flex items-center rounded-full border border-emerald-400/35 bg-[#063B33]/90 px-3 py-1 font-mono text-[10.5px] font-extrabold uppercase tracking-wider text-[#5EEAD4] backdrop-blur-md">
+                          {p.status}
+                        </span>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="-mt-7 relative z-10 px-6 pb-4">
+                        <div className="flex items-center gap-3.5">
+                          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-white/20 bg-[#0B2E46]/90 text-white shadow-lg backdrop-blur-md">
+                            {p.icon}
+                          </div>
+                          <h2 className="font-display text-[1.75rem] font-extrabold leading-none tracking-tight text-white">
+                            {p.label}
+                          </h2>
+                        </div>
+
+                        <p className="mt-3.5 text-sm font-medium leading-relaxed text-slate-200">{p.desc}</p>
+
+                        {/* Frosted Dark Try-Now Callout */}
+                        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-white/12 bg-white/[0.08] px-4 py-3 text-xs leading-snug text-slate-100 backdrop-blur-sm">
+                          <span className="shrink-0">{p.tryIcon}</span>
+                          <span>
+                            <strong className="font-extrabold text-white">Try now: </strong>
+                            {p.liveTool}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <span
-                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider ${
-                        flagship ? 'bg-emerald-400/15 text-emerald-300' : 'bg-emerald-50 text-[#059669]'
-                      }`}
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> {p.status}
+
+                    {/* Luminous Mint-Emerald Pill Button */}
+                    <div className="px-6 pb-6 pt-2">
+                      <span className="vp-btn-mint-glow flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-extrabold transition">
+                        <span>Open {p.label}</span>
+                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                      </span>
+                    </div>
+                  </button>
+                );
+              }
+
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => navigate(p.path)}
+                  className="vp-ice-path-card group relative flex flex-col justify-between overflow-hidden rounded-[28px] text-left text-[#071930] transition duration-300 hover:-translate-y-1.5"
+                >
+                  <div>
+                    {/* Top 3D Studio Artwork Header + LIVE Pill + Soft Ice Wave Cutout */}
+                    <div className="relative h-48 w-full overflow-hidden bg-[#D7ECF8]">
+                      <img
+                        src={p.imageSrc}
+                        alt={p.label}
+                        className="h-full w-full object-cover object-center transition duration-500 group-hover:scale-105"
+                      />
+                      {/* Smooth S-Wave Blending Into White Card Body */}
+                      <svg
+                        className="pointer-events-none absolute -bottom-px left-0 w-full text-white"
+                        viewBox="0 0 400 38"
+                        fill="currentColor"
+                        preserveAspectRatio="none"
+                        aria-hidden="true"
+                      >
+                        <path d="M0,14 C120,40 275,-6 400,20 L400,38 L0,38 Z" />
+                      </svg>
+
+                      {/* Top-Right Emerald LIVE Pill */}
+                      <span className="absolute right-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-[#065F46] px-3 py-1 font-mono text-[10.5px] font-extrabold uppercase tracking-wider text-white shadow-md">
+                        <span className="h-2 w-2 rounded-full bg-[#5FF5B4] shadow-[0_0_8px_#5ff5b4]" />
+                        {p.status}
+                      </span>
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="-mt-6 relative z-10 px-6 pb-4">
+                      <div className="flex items-center gap-3.5">
+                        <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-emerald-200/90 bg-gradient-to-br from-[#CCFBF1] to-[#D1FAE5] text-[#065F46] shadow-md">
+                          {p.icon}
+                        </div>
+                        <h2 className="font-display text-[1.6rem] font-extrabold leading-tight tracking-tight text-[#071930]">
+                          {p.label}
+                        </h2>
+                      </div>
+
+                      <p className="mt-3.5 text-sm leading-relaxed text-slate-700">{p.desc}</p>
+
+                      {/* Tinted Ice-Slate Try-Now Pill Box */}
+                      <div className="mt-4 flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-[#E6EFF7]/85 px-4 py-3 text-xs leading-snug text-slate-800">
+                        <span className="shrink-0">{p.tryIcon}</span>
+                        <span>
+                          <strong className="font-extrabold text-[#071930]">Try now: </strong>
+                          {p.liveTool}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Deep Ocean-Teal Pill CTA Button */}
+                  <div className="px-6 pb-6 pt-2">
+                    <span className="vp-btn-deep-ocean flex w-full items-center justify-center gap-2 rounded-full py-3.5 text-sm font-extrabold transition">
+                      <span>Open {p.label}</span>
+                      <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                     </span>
                   </div>
-                  <h2 className="font-display mt-4 text-2xl font-extrabold">{p.label}</h2>
-                  <p className={`mt-1.5 text-sm ${flagship ? 'text-slate-300' : 'text-slate-600'}`}>{p.desc}</p>
-                  <div
-                    className={`mt-4 rounded-2xl px-3.5 py-2.5 text-xs ${
-                      flagship ? 'border border-white/10 bg-white/[0.06] text-slate-200' : 'border border-slate-200 bg-[#F4F8FC] text-slate-700'
-                    }`}
-                  >
-                    <span className={`font-bold ${flagship ? 'text-teal-300' : 'text-[#0B4F9C]'}`}>Try now: </span>
-                    {p.liveTool}
-                  </div>
-                </div>
-                <span
-                  className={`mt-5 inline-flex items-center gap-1.5 text-sm font-extrabold ${flagship ? 'text-emerald-300' : 'text-[#059669]'}`}
-                >
-                  Open {p.label} <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      </div>
 
       {/* WHAT MAKES US DIFFERENT */}
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">

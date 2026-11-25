@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" fill="none">
+  <defs>
+    <linearGradient id="bgIce" x1="600" y1="0" x2="600" y2="800" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#D4ECFA" />
+      <stop offset="55%" stop-color="#E8F4FC" />
+      <stop offset="100%" stop-color="#F5FAFE" />
+    </linearGradient>
+
+    <linearGradient id="silkWave1" x1="0" y1="420" x2="1200" y2="220" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.15" />
+      <stop offset="48%" stop-color="#FFFFFF" stop-opacity="0.72" />
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0.18" />
+    </linearGradient>
+
+    <linearGradient id="silkWave2" x1="100" y1="520" x2="1150" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#BAE6FD" stop-opacity="0.2" />
+      <stop offset="50%" stop-color="#FFFFFF" stop-opacity="0.58" />
+      <stop offset="100%" stop-color="#CCFBF1" stop-opacity="0.28" />
+    </linearGradient>
+
+    <linearGradient id="padFace" x1="380" y1="150" x2="720" y2="610" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="75%" stop-color="#F8FAFC" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+
+    <linearGradient id="padEdge" x1="360" y1="540" x2="760" y2="620" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#CBD5E1" />
+      <stop offset="50%" stop-color="#94A3B8" />
+      <stop offset="100%" stop-color="#CBD5E1" />
+    </linearGradient>
+
+    <linearGradient id="ringMetal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="40%" stop-color="#94A3B8" />
+      <stop offset="75%" stop-color="#475569" />
+      <stop offset="100%" stop-color="#E2E8F0" />
+    </linearGradient>
+
+    <linearGradient id="checkBadge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#047857" />
+    </linearGradient>
+
+    <linearGradient id="penBody" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#061A33" />
+      <stop offset="38%" stop-color="#153E6C" />
+      <stop offset="68%" stop-color="#092545" />
+      <stop offset="100%" stop-color="#041020" />
+    </linearGradient>
+
+    <linearGradient id="penGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F8FAFC" />
+      <stop offset="45%" stop-color="#CBD5E1" />
+      <stop offset="80%" stop-color="#64748B" />
+      <stop offset="100%" stop-color="#F1F5F9" />
+    </linearGradient>
+
+    <filter id="softDrop" x="-20%" y="-20%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="26" stdDeviation="24" flood-color="#0B2948" flood-opacity="0.18" />
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#0B2948" flood-opacity="0.08" />
+    </filter>
+
+    <filter id="penDrop" x="-30%" y="-30%" width="170%" height="170%">
+      <feDropShadow dx="-8" dy="24" stdDeviation="16" flood-color="#071E38" flood-opacity="0.25" />
+    </filter>
+  </defs>
+
+  <!-- Luminous Ice-Blue Studio Backdrop -->
+  <rect width="1200" height="800" fill="url(#bgIce)" />
+  <ellipse cx="620" cy="410" rx="340" ry="220" fill="#99F6E4" opacity="0.22" />
+
+  <!-- Flowing Translucent Silk Wave Ribbons (matching Money/Tech/Protect renders) -->
+  <path
+    d="M-80 470 C 210 290, 520 550, 840 320 C 1020 190, 1150 250, 1280 340 L 1280 510 C 1080 390, 920 350, 740 470 C 460 650, 190 430, -80 580 Z"
+    fill="url(#silkWave1)"
+  />
+  <path
+    d="M-60 360 C 260 520, 590 190, 940 370 C 1090 445, 1180 410, 1270 350"
+    stroke="#FFFFFF"
+    stroke-width="3.5"
+    stroke-opacity="0.75"
+  />
+  <path
+    d="M-60 530 C 290 380, 650 610, 1010 380 C 1120 310, 1200 320, 1270 365"
+    stroke="url(#silkWave2)"
+    stroke-width="26"
+    stroke-linecap="round"
+  />
+
+  <!-- Soft Ground Contact Shadow -->
+  <ellipse cx="575" cy="625" rx="255" ry="28" fill="#0B2948" opacity="0.12" />
+
+  <!-- 3D Spiral Checklist Notepad (tilted slightly in perspective) -->
+  <g transform="translate(555 390) rotate(-6) translate(-555 -390)" filter="url(#softDrop)">
+    <!-- Back Stacked Paper Thickness -->
+    <rect x="358" y="176" width="380" height="422" rx="28" fill="url(#padEdge)" />
+    <rect x="352" y="168" width="380" height="422" rx="28" fill="#E2E8F0" />
+    <!-- Top Crisp Paper Sheet -->
+    <rect x="346" y="156" width="380" height="420" rx="28" fill="url(#padFace)" stroke="#FFFFFF" stroke-width="3" />
+
+    <!-- Subtle Top Header Accent Strip -->
+    <path d="M346 184 C346 168.5 358.5 156 374 156 H698 C713.5 156 726 168.5 726 184 V212 H346 V184 Z" fill="#F1F5F9" />
+
+    <!-- 6 Metallic 3D Spiral Rings Along Top -->
+    <g>
+      <circle cx="404" cy="176" r="8" fill="#64748B" />
+      <rect x="398" y="132" width="12" height="46" rx="6" fill="url(#ringMetal)" />
+
+      <circle cx="468" cy="176" r="8" fill="#64748B" />
+      <rect x="462" y="132" width="12" height="46" rx="6" fill="url(#ringMetal)" />
+
+      <circle cx="532" cy="176" r="8" fill="#64748B" />
+      <rect x="526" y="132" width="12" height="46" rx="6" fill="url(#ringMetal)" />
+
+      <circle cx="596" cy="176" r="8" fill="#64748B" />
+      <rect x="590" y="132" width="12" height="46" rx="6" fill="url(#ringMetal)" />
+
+      <circle cx="660" cy="176" r="8" fill="#64748B" />
+      <rect x="654" y="132" width="12" height="46" rx="6" fill="url(#ringMetal)" />
+    </g>
+
+    <!-- Row 1: Checked Emerald Box + Clean UI Bars -->
+    <g transform="translate(392 246)">
+      <rect x="0" y="0" width="54" height="54" rx="14" fill="#ECFDF5" stroke="url(#checkBadge)" stroke-width="4" />
+      <path d="M14 28 L24 38 L41 17" stroke="url(#checkBadge)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" />
+      <rect x="76" y="10" width="196" height="15" rx="7.5" fill="#CBD5E1" />
+      <rect x="76" y="33" width="132" height="11" rx="5.5" fill="#E2E8F0" />
+    </g>
+
+    <!-- Divider 1 -->
+    <line x1="392" y1="324" x2="682" y2="324" stroke="#E2E8F0" stroke-width="2" />
+
+    <!-- Row 2: Checked Emerald Box + Clean UI Bars -->
+    <g transform="translate(392 346)">
+      <rect x="0" y="0" width="54" height="54" rx="14" fill="#ECFDF5" stroke="url(#checkBadge)" stroke-width="4" />
+      <path d="M14 28 L24 38 L41 17" stroke="url(#checkBadge)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" />
+      <rect x="76" y="10" width="210" height="15" rx="7.5" fill="#CBD5E1" />
+      <rect x="76" y="33" width="150" height="11" rx="5.5" fill="#E2E8F0" />
+    </g>
+
+    <!-- Divider 2 -->
+    <line x1="392" y1="424" x2="682" y2="424" stroke="#E2E8F0" stroke-width="2" />
+
+    <!-- Row 3: Checked Emerald Box + Clean UI Bars -->
+    <g transform="translate(392 446)">
+      <rect x="0" y="0" width="54" height="54" rx="14" fill="#ECFDF5" stroke="url(#checkBadge)" stroke-width="4" />
+      <path d="M14 28 L24 38 L41 17" stroke="url(#checkBadge)" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" />
+      <rect x="76" y="10" width="176" height="15" rx="7.5" fill="#CBD5E1" />
+      <rect x="76" y="33" width="118" height="11" rx="5.5" fill="#E2E8F0" />
+    </g>
+  </g>
+
+  <!-- 3D Executive Navy & Brushed-Chrome Pen Floating Beside Notepad -->
+  <g transform="translate(808 430) rotate(34) translate(-808 -430)" filter="url(#penDrop)">
+    <!-- Top Clicker Cap -->
+    <rect x="796" y="232" width="24" height="28" rx="8" fill="url(#penGold)" />
+    <!-- Upper Barrel -->
+    <rect x="791" y="254" width="34" height="148" rx="8" fill="url(#penBody)" />
+    <!-- Pocket Clip -->
+    <rect x="823" y="270" width="7" height="98" rx="3.5" fill="url(#penGold)" />
+    <!-- Center Chrome Band -->
+    <rect x="790" y="398" width="36" height="14" rx="2" fill="url(#penGold)" />
+    <!-- Lower Barrel -->
+    <rect x="792" y="412" width="32" height="134" rx="5" fill="url(#penBody)" />
+    <!-- Specular Highlight Along Barrel -->
+    <rect x="798" y="262" width="5" height="276" rx="2.5" fill="#FFFFFF" opacity="0.22" />
+    <!-- Brushed Chrome Cone Nib -->
+    <path d="M792 546 H824 L812 592 H804 L792 546 Z" fill="url(#penGold)" />
+    <!-- Ballpoint Tip -->
+    <path d="M804 592 H812 L809.5 606 C809 608 807 608 806.5 606 L804 592 Z" fill="#061A33" />
+  </g>
+</svg>

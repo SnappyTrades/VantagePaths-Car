@@ -19,6 +19,9 @@ interface VerticalConfig {
   titleWhite: string;
   titleAccent: string;
   subtitle: string;
+  imageSrc: string;
+  imageBadgeTop: string;
+  imageBadgeValue: string;
   toolKicker: string;
   toolTitle: string;
   toolDesc: string;
@@ -37,6 +40,9 @@ export const LIFE_VERTICALS: Record<LifeVerticalId, VerticalConfig> = {
     titleAccent: 'Loyalty Penalty',
     subtitle:
       'Internet and cable companies quietly raise rates after the promo ends. Benchmark your bill against new-customer pricing, then get a ready-to-send retention request and call script.',
+    imageSrc: '/images/path-home.jpg',
+    imageBadgeTop: 'VantagePaths Home',
+    imageBadgeValue: 'Avg. ~$360/yr Saved',
     toolKicker: 'Live Tool • Internet & Cable Bill Negotiator',
     toolTitle: 'How Much Are You Overpaying for Internet?',
     toolDesc: 'Enter your current bill. We benchmark it against new-customer pricing for your speed tier and flag equipment fees you can eliminate.',
@@ -57,6 +63,9 @@ export const LIFE_VERTICALS: Record<LifeVerticalId, VerticalConfig> = {
     titleAccent: 'With the Math to Back It Up',
     subtitle:
       'Card issuers lower APRs and reverse fees for customers who ask the right way. See exactly what your rate costs you, then send a request built for your account.',
+    imageSrc: '/images/path-money.jpg',
+    imageBadgeTop: 'VantagePaths Money',
+    imageBadgeValue: 'APR & Fee Recovery',
     toolKicker: 'Live Tool • APR Reduction & Fee Reversal Builder',
     toolTitle: 'What Is Your Credit Card Rate Really Costing You?',
     toolDesc: 'Enter your balance and APR. We calculate your yearly interest, a realistic target rate, and fees worth requesting back.',
@@ -77,6 +86,9 @@ export const LIFE_VERTICALS: Record<LifeVerticalId, VerticalConfig> = {
     titleAccent: 'in 2 Minutes',
     subtitle:
       'Most families pay for "unlimited" they don\'t use. Compare your per-line cost against plans on the same networks, and switch or negotiate without losing your numbers.',
+    imageSrc: '/images/path-tech.jpg',
+    imageBadgeTop: 'VantagePaths Tech',
+    imageBadgeValue: 'Keep Your Numbers',
     toolKicker: 'Live Tool • Cell Phone Plan Right-Sizer',
     toolTitle: 'Are You Overpaying Per Line?',
     toolDesc: 'Enter your bill, lines and typical data use. We separate device payments from service and benchmark your real per-line price.',
@@ -97,6 +109,9 @@ export const LIFE_VERTICALS: Record<LifeVerticalId, VerticalConfig> = {
     titleAccent: 'Before the Deadline',
     subtitle:
       'Charged for something you never got, cancelled, or that arrived broken? Find your written dispute deadline and generate the letters your card issuer and the merchant need to see.',
+    imageSrc: '/images/path-protect.jpg',
+    imageBadgeTop: 'VantagePaths Protect',
+    imageBadgeValue: '60-Day FCBA Window',
     toolKicker: 'Live Tool • Charge Dispute & Refund Builder',
     toolTitle: 'How Many Days Do You Have to Dispute?',
     toolDesc: 'Enter the charge and your statement date. We calculate your 60-day written dispute window and what to do first.',
@@ -117,6 +132,9 @@ export const LIFE_VERTICALS: Record<LifeVerticalId, VerticalConfig> = {
     titleAccent: "Don't Use",
     subtitle:
       'Subscriptions creep up $10 at a time. See your real monthly total, pick what to cut, and get ready-to-send cancellation requests for every one.',
+    imageSrc: '/images/path-life.svg',
+    imageBadgeTop: 'Everyday Life',
+    imageBadgeValue: '1-Click Cancel Emails',
     toolKicker: 'Live Tool • Subscription Cancellation Center',
     toolTitle: 'What Are Your Subscriptions Costing You Per Year?',
     toolDesc: 'Adjust the list to match your accounts, mark what you rarely use, and select what to cancel.',
@@ -170,6 +188,10 @@ export const LifeVerticalPage: React.FC<{ vertical: LifeVerticalId; navigate: (p
         titleWhite={cfg.titleWhite}
         titleAccent={cfg.titleAccent}
         subtitle={cfg.subtitle}
+        imageSrc={cfg.imageSrc}
+        imageAlt={cfg.toolTitle}
+        imageBadgeTop={cfg.imageBadgeTop}
+        imageBadgeValue={cfg.imageBadgeValue}
         pills={cfg.pills.map((p) => ({ label: p }))}
       />
 
