@@ -20,6 +20,7 @@ import { LoanRescuePage } from './components/LoanRescuePage';
 import { InsuranceAuditPage, SellOrTradePage, StatesLawHubPage } from './components/InsuranceSellPages';
 import { AdminFunnelView } from './components/AdminFunnelView';
 import { PartnerCard } from './components/PartnerCard';
+import { VantagePathsLogo } from './components/VantagePathsLogo';
 
 function parseRoute(pathname: string): { view: string; stateCode: string | null } {
   const clean = pathname.replace(/\/+$/, '') || '/';
@@ -107,18 +108,8 @@ export function App() {
       {/* Editorial Light Top Nav */}
       <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-[#FAF9F5]/95 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2.5 text-left">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1528] to-[#0F766E] text-white shadow-sm">
-              <Compass className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="text-lg font-extrabold tracking-tight text-[#0B1528]">
-                Vantage<span className="text-[#0F766E]">Paths</span>
-              </div>
-              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                Car Ownership Without the Hassle
-              </div>
-            </div>
+          <button onClick={() => navigate('/')} className="flex items-center text-left">
+            <VantagePathsLogo theme="light" size="md" />
           </button>
 
           <nav className="hidden items-center gap-1 md:flex">
@@ -189,14 +180,12 @@ export function App() {
       {loc.view === 'admin' && <AdminFunnelView />}
 
       {/* Authoritative Editorial Footer + FTC Disclosure */}
-      <footer className="mt-16 border-t border-slate-200 bg-[#0B1528] py-12 text-slate-300">
+      <footer className="mt-16 border-t border-slate-200 bg-[#082545] py-12 text-slate-300">
         <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
             <div>
-              <div className="text-lg font-extrabold text-white">
-                Vantage<span className="text-teal-400">Paths</span>.com
-              </div>
-              <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-400">
+              <VantagePathsLogo theme="dark" size="md" />
+              <p className="mt-2.5 max-w-xl text-xs leading-relaxed text-slate-300">
                 100% Independent Self-Service Car Ownership Platform — Buy From Home, Cancel Overpriced F&amp;I Add-Ons, Slash Auto Insurance Without Spam, and Exit for Max Cash.
               </p>
             </div>
@@ -266,12 +255,17 @@ const EditorialHomePage: React.FC<{ navigate: (path: string) => void; states: an
       <section className="border-b border-slate-200/80 py-14 sm:py-16">
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 sm:px-6 lg:grid-cols-12">
           <div className="space-y-5 lg:col-span-6">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3.5 py-1 text-xs font-bold text-[#0F766E]">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1 text-xs font-bold text-[#05A66B]">
               <ShieldCheck className="h-3.5 w-3.5" /> 100% Independent • 50-State Coverage • Zero Dealer Kickbacks
             </span>
-            <h1 className="font-display text-4xl font-extrabold leading-[1.06] tracking-tight text-[#0B1528] sm:text-5xl">
-              Do everything you <span className="text-[#0F766E] underline decoration-teal-300 decoration-4 underline-offset-4">hate</span> about owning a car — smarter, from your couch.
+            <h1 className="font-display text-4xl font-extrabold leading-[1.06] tracking-tight text-[#082545] sm:text-5xl">
+              Do everything you <span className="italic text-[#05A66B]">hate</span> about owning a car — smarter, from your couch.
             </h1>
+            <div className="flex items-center gap-3 text-xs font-semibold italic text-[#415E78]">
+              <span className="h-[2.5px] w-10 rounded bg-[#05A66B]" />
+              <span>Your home-to-keys advantage path</span>
+              <span className="h-[2.5px] w-10 rounded bg-[#05A66B]" />
+            </div>
             <p className="text-base leading-relaxed text-slate-600">
               Skip 4-hour dealership traps and insurance spam calls. VantagePaths gives you the exact tools to <strong>buy a car 95% online</strong>, <strong>cancel $2k–$5k in regretted warranties &amp; GAP</strong> to unlock refinancing, <strong>audit your insurance every 6 months</strong>, and <strong>sell for max cash</strong>.
             </p>

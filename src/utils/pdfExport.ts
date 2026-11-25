@@ -20,16 +20,29 @@ export async function downloadAuditPdf(audit: PublicAuditResponse): Promise<void
     }
   };
 
-  // Header Bar
-  doc.setFillColor(11, 21, 40);
-  doc.rect(0, 0, pageWidth, 86, 'F');
-  doc.setTextColor(45, 212, 191);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('VANTAGEPATHS.COM  •  INDEPENDENT SELF-SERVICE AUTO ADVOCATE', margin, 32);
+  // Header Bar (Matches VantagePaths Navy #082545 + Path Emerald #05A66B Brand Lockup)
+  doc.setFillColor(8, 37, 69);
+  doc.rect(0, 0, pageWidth, 88, 'F');
+  doc.setFillColor(5, 166, 107);
+  doc.rect(0, 84, pageWidth, 4, 'F');
 
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text('Vantage', margin, 32);
+  const vWidth = doc.getTextWidth('Vantage');
+  doc.setTextColor(5, 166, 107);
+  doc.setFont('helvetica', 'bolditalic');
+  doc.text('Paths', margin + vWidth + 1, 32);
+
+  doc.setTextColor(148, 163, 184);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(9);
+  doc.text('  •  Do everything you hate about owning a car — smarter, from your couch.', margin + vWidth + 44, 32);
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
   doc.text('AUTO DEAL, CONTRACT & REFUND AUDIT PACKET', margin, 54);
 
   doc.setTextColor(148, 163, 184);
