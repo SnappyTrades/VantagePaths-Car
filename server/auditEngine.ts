@@ -3,6 +3,7 @@ import type {
   AuditFinding,
   AuditLineItem,
   AuditVerticalId,
+  AutoDocVariant,
   FindingSeverity,
   PublicAuditResponse,
   StoredAuditRecord,
@@ -16,127 +17,19 @@ import {
 } from './llmRouter.ts';
 
 export const VERTICAL_PRICING: Record<AuditVerticalId, VerticalPricingPlan> = {
-  freight: {
-    passSku: 'FREIGHT_PACK',
-    passName: 'Freight 15-Audit Pack',
-    passPriceUsd: 29,
-    passDescription:
-      'Unlock full dispute memos, accessorial flags, and broker counter-offer emails for up to 15 invoices or rate-cons.',
-    proSku: 'PRO_MONTHLY',
-    proName: 'VantagePaths Pro (All Verticals)',
-    proPriceUsd: 79,
-    proDescription:
-      'Unlimited freight, auto & contractor audits, CSV batch exports, and priority carrier/rate benchmarks.',
-  },
   auto: {
     passSku: 'AUTO_PASS',
     passName: '60-Day VantagePaths Auto Pass',
     passPriceUsd: 29,
     passDescription:
       'Unlock all 4 pillars for 60 days: Buy-From-Home OTD & TILA Contract Audits, Pre-Filled F&I Cancellation + Stall-Buster PDFs, Zero-Spam Insurance Spec Sheets & Private Sale Checklists.',
-    proSku: 'PRO_MONTHLY',
+    proSku: 'CERTIFIED_MAIL',
     proName: '1-Click USPS Certified Mail Dispatch',
     proPriceUsd: 15,
     proDescription:
       'Optional self-service mail dispatch: you review & sign your own cancellation letter and VantagePaths dispatches USPS Certified Mail (Return Receipt) to Administrator + Dealer F&I.',
   },
-  'home-bids': {
-    passSku: 'HOME_PASS',
-    passName: 'Homeowner Project Pass',
-    passPriceUsd: 29,
-    passDescription:
-      'Unlock full bid line-item audit, missing building-code / insurance supplement checklist, and contractor pushback email.',
-    proSku: 'PRO_MONTHLY',
-    proName: 'VantagePaths Pro (Property Manager)',
-    proPriceUsd: 79,
-    proDescription:
-      'Unlimited bid, claim & commercial invoice audits across portfolios with client-ready PDF memos.',
-  },
 };
-
-export interface FreightCalcInput {
-  loadedMiles: number;
-  deadheadMiles: number;
-  mpg: number;
-  dieselPerGallon: number;
-  driverPayPerMile: number;
-  otherCostsUsd: number;
-  offeredRateUsd: number;
-  billedInvoiceUsd?: number;
-  quotedFscPct?: number;
-}
-
-export interface FreightCalcResult {
-  totalMiles: number;
-  fuelGallons: number;
-  fuelCostUsd: number;
-  driverCostUsd: number;
-  totalOperatingCostUsd: number;
-  netProfitUsd: number;
-  allInRpm: number;
-  costPerMile: number;
-  minProfitableRateUsd: number;
-  benchmarkFscPct: number;
-  fscOverchargeUsd: number;
-  invoiceVarianceUsd: number;
-  verdict: 'PROFITABLE' | 'THIN_MARGIN' | 'UNPROFITABLE';
-}
-
-/**
- * Deterministic Freight Profit & Invoice Audit math.
- * EIA baseline diesel defaults to $3.79/gal (base $1.25/gal, $0.06/gal per 1% FSC ~ 42% standard).
- */
-export function calculateFreightProfit(input: FreightCalcInput): FreightCalcResult {
-  const loadedMiles = Math.max(1, Number(input.loadedMiles) || 0);
-  const deadheadMiles = Math.max(0, Number(input.deadheadMiles) || 0);
-  const mpg = Math.max(2.5, Number(input.mpg) || 6.5);
-  const diesel = Math.max(1.5, Number(input.dieselPerGallon) || 3.79);
-  const driverPayPerMile = Math.max(0, Number(input.driverPayPerMile) || 0.65);
-  const otherCostsUsd = Math.max(0, Number(input.otherCostsUsd) || 120);
-  const offeredRateUsd = Math.max(0, Number(input.offeredRateUsd) || 0);
-
-  const totalMiles = loadedMiles + deadheadMiles;
-  const fuelGallons = totalMiles / mpg;
-  const fuelCostUsd = round2(fuelGallons * diesel);
-  const driverCostUsd = round2(totalMiles * driverPayPerMile);
-  const totalOperatingCostUsd = round2(fuelCostUsd + driverCostUsd + otherCostsUsd);
-  const netProfitUsd = round2(offeredRateUsd - totalOperatingCostUsd);
-  const allInRpm = round2(offeredRateUsd / totalMiles);
-  const costPerMile = round2(totalOperatingCostUsd / totalMiles);
-  const minProfitableRateUsd = Math.ceil(totalOperatingCostUsd * 1.18);
-
-  // Standard DOE/EIA FSC benchmark: ~$0.01/mi per $0.06 above $1.25/gal ≈ ~26%-34% of linehaul
-  const benchmarkFscPct = round2(Math.max(12, Math.min(36, ((diesel - 1.25) / 6.0) * 65)));
-  const quotedFscPct = Number(input.quotedFscPct) || 0;
-  const fscOverchargeUsd =
-    quotedFscPct > benchmarkFscPct && offeredRateUsd > 0
-      ? round2(((quotedFscPct - benchmarkFscPct) / 100) * offeredRateUsd)
-      : 0;
-
-  const billedInvoiceUsd = Number(input.billedInvoiceUsd) || 0;
-  const invoiceVarianceUsd =
-    billedInvoiceUsd > 0 && offeredRateUsd > 0 ? round2(billedInvoiceUsd - offeredRateUsd) : 0;
-
-  const marginPct = offeredRateUsd > 0 ? (netProfitUsd / offeredRateUsd) * 100 : -100;
-  const verdict: FreightCalcResult['verdict'] =
-    marginPct >= 15 ? 'PROFITABLE' : marginPct >= 5 ? 'THIN_MARGIN' : 'UNPROFITABLE';
-
-  return {
-    totalMiles,
-    fuelGallons: round2(fuelGallons),
-    fuelCostUsd,
-    driverCostUsd,
-    totalOperatingCostUsd,
-    netProfitUsd,
-    allInRpm,
-    costPerMile,
-    minProfitableRateUsd,
-    benchmarkFscPct,
-    fscOverchargeUsd,
-    invoiceVarianceUsd,
-    verdict,
-  };
-}
 
 export interface AutoCalcInput {
   sellingPriceUsd: number;
@@ -208,7 +101,10 @@ export function calculateAutoDeal(input: AutoCalcInput): AutoCalcResult {
   );
   const totalDealSavingsUsd = Math.max(
     0,
-    round2((quotedMonthlyUsd - fairMonthlyUsd) * termMonths + (quotedOtdUsd - fairOtdUsd - (financedQuotedUsd - financedFairUsd)))
+    round2(
+      (quotedMonthlyUsd - fairMonthlyUsd) * termMonths +
+        (quotedOtdUsd - fairOtdUsd - (financedQuotedUsd - financedFairUsd))
+    )
   );
   const equivalentLeaseAprPct =
     input.leaseMoneyFactor && input.leaseMoneyFactor > 0
@@ -234,196 +130,72 @@ export function calculateAutoDeal(input: AutoCalcInput): AutoCalcResult {
   };
 }
 
-export type HomeProjectType = 'roof' | 'hvac' | 'solar' | 'remodel' | 'insurance-claim';
-
-export interface HomeBidCalcInput {
-  projectType: HomeProjectType;
-  squareFeet: number;
-  quotedUsd: number;
-  regionTier: 'low' | 'standard' | 'high';
-}
-
-export interface HomeBidCalcResult {
-  fairLowUsd: number;
-  fairHighUsd: number;
-  fairMidUsd: number;
-  varianceFromHighUsd: number;
-  varianceFromMidUsd: number;
-  verdict: 'OVERPRICED' | 'UNDERPAID_CLAIM' | 'WITHIN_RANGE';
-  mandatoryChecklist: string[];
-}
-
-const HOME_BENCHMARKS: Record<
-  HomeProjectType,
-  { lowPerUnit: number; highPerUnit: number; baseLow: number; baseHigh: number; checklist: string[] }
-> = {
-  roof: {
-    lowPerUnit: 4.75,
-    highPerUnit: 7.4,
-    baseLow: 1200,
-    baseHigh: 2100,
-    checklist: [
-      'Ice & water shield in valleys & eaves (IRC R905.1.2)',
-      'Metal drip edge on rakes & eaves (IRC R905.2.8.5)',
-      'Starter strip shingles & ridge cap shingles itemized',
-      'Tear-off, dump trailer & magnetic nail sweep included',
-      'Permit fee + Manufacturer warranty tier (e.g., GAF / Owens Corning) stated',
-    ],
-  },
-  hvac: {
-    lowPerUnit: 3.8,
-    highPerUnit: 6.2,
-    baseLow: 2500,
-    baseHigh: 3800,
-    checklist: [
-      'Exact SEER2 / AFUE model numbers & tonnage (Manual J load calc)',
-      'New refrigerant line set flush/replacement & condensate pan float switch',
-      'Plenum transition, thermostat, and crane/disposal fee itemized',
-      '10-year parts + written labor warranty duration',
-    ],
-  },
-  solar: {
-    lowPerUnit: 2.55,
-    highPerUnit: 3.45,
-    baseLow: 1500,
-    baseHigh: 2500,
-    checklist: [
-      'Cash price vs. dealer-fee financed price clearly separated (avoid 25%+ hidden dealer fees)',
-      'Panel & microinverter/inverter brand + 25-year production warranty',
-      'Main panel upgrade (MPU) & roof penetration warranty specified',
-    ],
-  },
-  remodel: {
-    lowPerUnit: 95,
-    highPerUnit: 175,
-    baseLow: 2500,
-    baseHigh: 5000,
-    checklist: [
-      'Milestone draw schedule (never >20% deposit upfront; final payment after inspection)',
-      'Allowance schedule for fixtures/tile/cabinets & written change-order markup cap',
-      'Lien waiver from subs + active COI / general liability & workers comp proof',
-    ],
-  },
-  'insurance-claim': {
-    lowPerUnit: 5.2,
-    highPerUnit: 8.1,
-    baseLow: 1800,
-    baseHigh: 3200,
-    checklist: [
-      'Overhead & Profit (O&P 10%+10%) when 3+ trades are involved',
-      'Code upgrade items: drip edge, ice & water shield, starter course, steep/high roof charges',
-      'Recoverable depreciation (RCV vs ACV) release instructions',
-      'Matching siding/shingle endorsement & waste factor (10%–15%) verified',
-    ],
-  },
-};
-
-export function calculateHomeBidBenchmark(input: HomeBidCalcInput): HomeBidCalcResult {
-  const cfg = HOME_BENCHMARKS[input.projectType] ?? HOME_BENCHMARKS.roof;
-  const units = Math.max(100, Number(input.squareFeet) || 2000);
-  const quotedUsd = Math.max(0, Number(input.quotedUsd) || 0);
-  const regionMult = input.regionTier === 'high' ? 1.22 : input.regionTier === 'low' ? 0.88 : 1.0;
-
-  const fairLowUsd = Math.round((cfg.baseLow + units * cfg.lowPerUnit) * regionMult);
-  const fairHighUsd = Math.round((cfg.baseHigh + units * cfg.highPerUnit) * regionMult);
-  const fairMidUsd = Math.round((fairLowUsd + fairHighUsd) / 2);
-
-  let verdict: HomeBidCalcResult['verdict'] = 'WITHIN_RANGE';
-  if (input.projectType === 'insurance-claim' && quotedUsd > 0 && quotedUsd < fairLowUsd) {
-    verdict = 'UNDERPAID_CLAIM';
-  } else if (quotedUsd > fairHighUsd) {
-    verdict = 'OVERPRICED';
-  }
-
-  return {
-    fairLowUsd,
-    fairHighUsd,
-    fairMidUsd,
-    varianceFromHighUsd: Math.round(quotedUsd - fairHighUsd),
-    varianceFromMidUsd: Math.round(quotedUsd - fairMidUsd),
-    verdict,
-    mandatoryChecklist: cfg.checklist,
-  };
-}
-
-export async function lookupFmcsaCarrier(dotOrMc: string): Promise<{
-  available: boolean;
-  message: string;
-  legalName?: string;
-  allowedToOperate?: string;
-  safetyRating?: string;
-}> {
-  const webKey = process.env.FMCSA_WEB_KEY?.trim();
-  const digits = dotOrMc.replace(/\D/g, '');
-  if (!digits) return { available: false, message: 'Enter a valid USDOT or MC number.' };
-  if (!webKey) {
-    return {
-      available: false,
-      message: `Live FMCSA lookup ready once FMCSA_WEB_KEY is added to .env (checked DOT/MC #${digits}).`,
-    };
-  }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 5000);
-  try {
-    const res = await fetch(
-      `https://mobile.fmcsa.dot.gov/qc/services/carriers/${digits}?webKey=${encodeURIComponent(webKey)}`,
-      { signal: controller.signal }
-    );
-    if (!res.ok) return { available: false, message: `FMCSA returned HTTP ${res.status}.` };
-    const data = (await res.json()) as {
-      content?: { carrier?: { legalName?: string; allowedToOperate?: string; safetyRating?: string } };
-    };
-    const c = data.content?.carrier;
-    if (!c) return { available: false, message: `No FMCSA carrier record found for #${digits}.` };
-    return {
-      available: true,
-      message: 'Verified live via FMCSA SAFER API.',
-      legalName: c.legalName,
-      allowedToOperate: c.allowedToOperate,
-      safetyRating: c.safetyRating || 'Not Rated',
-    };
-  } catch {
-    return { available: false, message: 'FMCSA API timed out; try again shortly.' };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 export interface SampleDocument {
   fileName: string;
   title: string;
+  variant: AutoDocVariant;
   rawText: string;
 }
 
-export function getSampleAuditInput(vertical: AuditVerticalId): SampleDocument {
-  if (vertical === 'freight') {
+export function getSampleAuditInput(variant: AutoDocVariant = 'otd'): SampleDocument {
+  if (variant === 'signed-contract') {
     return {
-      fileName: 'Sample_Freight_Invoice_DAL-CHI_8842.txt',
-      title: 'Dallas TX → Chicago IL Dry Van Freight Invoice ($4,380)',
-      rawText: `APEX LOGISTICS & BROKERAGE LLC (MC# 914882)
-CARRIER INVOICE #INV-8842 — LOAD #LD-44910
-Lane: Dallas, TX (75207) to Chicago, IL (60609)
-Equipment: 53' Dry Van | Billed Mileage: 968 miles (Contract Rate-Con Mileage: 925 miles)
-Contracted Rate-Con All-In Linehaul: $2,950.00 (Approved FSC: 26% on linehaul)
+      fileName: 'Sample_Signed_RISC_TILA_Contract.txt',
+      title: 'Signed Retail Installment Sale Contract (TILA Disclosure — $43,620)',
+      variant: 'signed-contract',
+      rawText: `RETAIL INSTALLMENT SALE CONTRACT — SIMPLE FINANCE CHARGE (TRUTH-IN-LENDING DISCLOSURE)
+Buyer: Alex Rivera | Dealer: Metro Valley Motors (Texas) | Purchase Date: 22 days ago
+Vehicle: 2025 Honda CR-V Hybrid Sport-L AWD | Odometer: 1,140 miles
 
-BILLED CHARGES:
-1. Linehaul Base Charge: $3,150.00
-2. Fuel Surcharge (39.5% of Linehaul): $1,244.25
-3. Detention — Shipper Origin (2.25 hrs @ $125/hr, no signed BOL in/out timestamps attached): $281.25
-4. Residential / Limited Access Fee (Commercial Warehouse Dock #14): $185.00
-5. Duplicate Lumper Handling Fee (Lumper Receipt #L-209 already paid via EFS $140): $195.00
-6. Invoice Processing / Paperwork Admin Fee: $45.00
+FEDERAL TRUTH-IN-LENDING (TILA) BOX:
+- Annual Percentage Rate (APR): 8.99%
+- Finance Charge (Total Interest Paid): $12,844.80
+- Amount Financed: $43,620.00
+- Total of Payments (72 payments of $784.23): $56,464.80
 
-TOTAL INVOICE BILLED: $5,100.50
-Payment Terms: Net 15 (2.5% monthly late penalty)`,
+ITEMIZATION OF AMOUNT FINANCED:
+1. Cash Price of Vehicle (includes $1,295 Paint/Fabric Shield + $595 Pulse Brake): $39,385.00
+2. Official Fees + Sales Tax (6.25%): $2,740.00
+3. Dealer Documentary Fee (TX Cap $225): $225.00
+4. Optional Service Contract (Fidelity Platinum VSC 72mo/100k): $3,495.00
+5. Optional GAP Debt Waiver (Dealer Financed): $1,195.00
+6. Optional Tire & Wheel Road Hazard Plan: $895.00
+7. Less Cash Down Payment: -$4,315.00
+TOTAL AMOUNT FINANCED: $43,620.00
+
+NOTE: All optional F&I contracts are within the 30-day free-look window with zero claims filed.`,
     };
   }
 
-  if (vertical === 'auto') {
+  if (variant === 'insurance-dec') {
     return {
-      fileName: 'Sample_Dealer_OTD_Worksheet_RAV4_Hybrid.txt',
-      title: '2026 Toyota RAV4 Hybrid XLE Dealer OTD Worksheet ($46,842)',
-      rawText: `SUNCREST TOYOTA — RETAIL PURCHASE WORKSHEET
+      fileName: 'Sample_Auto_Insurance_Declarations_Page.txt',
+      title: 'Auto Policy Declarations Page ($1,248 / 6-Mo Renewal)',
+      variant: 'insurance-dec',
+      rawText: `AUTO POLICY DECLARATIONS PAGE — RENEWAL NOTICE
+Policyholder: Jordan Taylor | State: Texas (75024) | Term: 6 Months
+Vehicle: 2024 Toyota RAV4 Hybrid XLE AWD (VIN: 2T3P1RFV0RW000112)
+
+RENEWAL PREMIUM: $1,248.00 / 6 months ($2,496/yr)
+Prior Term Premium: $985.00 / 6 months (+26.7% Renewal Jump — Zero Accidents or Tickets!)
+
+COVERAGES & DEDUCTIBLES:
+- Bodily Injury Liability: $100,000 / $300,000 ($312)
+- Property Damage Liability: $100,000 ($228)
+- Uninsured / Underinsured Motorist: $100,000 / $300,000 ($115)
+- Collision ($250 Deductible): $388
+- Comprehensive ($250 Deductible): $122
+- Emergency Roadside Assistance Towing: $39
+- Rental Reimbursement ($30/day): $44
+- Loan/Lease Payoff (GAP): NOT INCLUDED (Buyer is currently paying $1,195 financed dealer GAP!)`,
+    };
+  }
+
+  return {
+    fileName: 'Sample_Dealer_OTD_Worksheet_RAV4_Hybrid.txt',
+    title: '2026 Toyota RAV4 Hybrid XLE Dealer OTD Worksheet ($46,842)',
+    variant: 'otd',
+    rawText: `SUNCREST TOYOTA — RETAIL PURCHASE WORKSHEET
 Vehicle: 2026 Toyota RAV4 Hybrid XLE AWD
 MSRP: $36,485.00
 Dealer Selling Price: $37,985.00 (+$1,500 Market Adjustment)
@@ -444,29 +216,21 @@ FINANCE TERMS QUOTED:
 Down Payment: $4,000 | Amount Financed: $42,842.00
 Quoted APR: 8.89% for 72 months (Credit Score 765 — Tier 1 Prime Credit Union Benchmark: 5.79%)
 Quoted Monthly Payment: $770.12/mo`,
-    };
-  }
-
-  return {
-    fileName: 'Sample_Storm_Roof_Bid_2400sqft.txt',
-    title: '2,400 sq ft Architectural Roof Replacement Bid ($28,950)',
-    rawText: `SUMMIT EXTERIORS & RESTORATION INC.
-HOMEOWNER ROOFING PROPOSAL #Q-7719 (24 Squares / ~2,400 sq ft Gable Roof)
-Scope Summary: "Complete roof replacement with architectural shingles, underlayment, and cleanup."
-
-PRICING BREAKDOWN:
-- Total Lump-Sum Turnkey Roof Package: $28,950.00
-- Payment Schedule: 50% Deposit ($14,475) due at signing, 40% upon material drop, 10% at completion.
-
-OBSERVATIONS & FINE PRINT:
-- No itemized per-square material/labor pricing; shingle manufacturer & model left as "Builder Grade Architectural or Equivalent".
-- Ice & Water Shield in valleys/eaves: NOT LISTED.
-- Metal Drip Edge (IRC R905.2.8.5): NOT LISTED ("Re-use existing perimeter metal where possible").
-- Decking replacement: "$135 per sheet of OSB plywood, unlimited quantity at contractor discretion."
-- Building Permit & Final Municipal Inspection: "Homeowner responsibility."
-- Cancellation clause: "25% liquidated damages fee if cancelled after 3 days."
-- Insurance Claim Note: Homeowner's insurer Xactimate estimate only allowed $14,200 ACV and omitted drip edge, starter course, and O&P.`,
   };
+}
+
+function detectDocVariant(rawText: string, explicitVariant?: AutoDocVariant): AutoDocVariant {
+  if (explicitVariant === 'signed-contract' || explicitVariant === 'insurance-dec' || explicitVariant === 'otd') {
+    return explicitVariant;
+  }
+  const lower = rawText.toLowerCase();
+  if (lower.includes('declarations') || lower.includes('bodily injury') || lower.includes('collision')) {
+    return 'insurance-dec';
+  }
+  if (lower.includes('truth-in-lending') || lower.includes('retail installment') || lower.includes('amount financed')) {
+    return 'signed-contract';
+  }
+  return 'otd';
 }
 
 interface RawLlmAuditPayload {
@@ -500,67 +264,64 @@ interface RawLlmAuditPayload {
   deterministicMetrics?: Array<{ label?: string; value?: string }>;
 }
 
-function getVerticalSystemPrompt(vertical: AuditVerticalId): string {
-  const commonSchema = `Return ONLY valid JSON matching this exact structure (no markdown fences, no commentary outside JSON):
+function getSystemPromptForVariant(variant: AutoDocVariant): string {
+  const schema = `Return ONLY valid JSON matching this exact structure (no markdown fences, no commentary outside JSON):
 {
-  "documentSummary": "1-2 concise sentences summarizing the uploaded document and parties/amounts.",
-  "verdictLabel": "Short punchy verdict e.g. '4 High-Risk Overcharges Detected' or 'Fair Quote With 1 Minor Flag'",
+  "documentSummary": "1-2 concise sentences summarizing the uploaded document and amounts.",
+  "verdictLabel": "Short punchy verdict",
   "verdictTone": "high_risk" | "moderate_risk" | "fair",
-  "estimatedSavingsUsd": 1450,
-  "billedTotalUsd": 5100,
-  "fairRangeLabel": "$3,420 - $3,780",
+  "estimatedSavingsUsd": 4200,
+  "billedTotalUsd": 46842,
+  "fairRangeLabel": "$39,500 - $40,900",
   "freeFlags": [
-    { "level": "CRITICAL" | "WARNING" | "INFO", "title": "Short flag title", "detail": "Specific factual explanation citing exact numbers from the doc.", "estimatedImpactUsd": 420 }
+    { "level": "CRITICAL" | "WARNING" | "INFO", "title": "Short flag title", "detail": "Specific factual explanation citing exact numbers.", "estimatedImpactUsd": 2789 }
   ],
   "lockedFlags": [
-    { "level": "CRITICAL" | "WARNING" | "INFO", "title": "Deeper audit flag title", "detail": "Detailed line-item or clause catch.", "estimatedImpactUsd": 280 }
+    { "level": "CRITICAL" | "WARNING" | "INFO", "title": "Deeper audit flag title", "detail": "Detailed line-item or statutory catch.", "estimatedImpactUsd": 1269 }
   ],
   "lineItems": [
-    { "label": "Line item name", "quotedAmount": "$1,244", "benchmarkAmount": "$767", "status": "OVERCHARGED" | "MISSING" | "SUSPECT" | "FAIR" }
+    { "label": "Line item name", "quotedAmount": "$1,495", "benchmarkAmount": "$0 (Optional)", "status": "OVERCHARGED" | "MISSING" | "SUSPECT" | "FAIR" }
   ],
-  "counterOfferSubject": "Professional email subject line ready to send",
-  "counterOfferScript": "Polite, firm, word-for-word email/message citing exact dollar adjustments and requesting a revised invoice/quote.",
+  "counterOfferSubject": "Professional self-service email subject line",
+  "counterOfferScript": "Polite, firm, word-for-word self-service email/letter citing exact dollar adjustments.",
   "negotiationChecklist": ["Actionable step 1", "Actionable step 2", "Actionable step 3"],
-  "deterministicMetrics": [{ "label": "Key metric name", "value": "Formatted value" }]
+  "deterministicMetrics": [{ "label": "Key metric", "value": "Formatted value" }]
 }
+Rules: Put top 2 findings in "freeFlags" (max 2) and 2 to 5 deeper catches in "lockedFlags". Never fabricate facts; frame everything as informational self-service benchmarks.`;
 
-Rules:
-- Put the top 2 most impactful findings in "freeFlags" (max 2 items).
-- Put 2 to 5 additional substantive findings, subtle traps, or missing-scope catches in "lockedFlags".
-- Never fabricate facts not grounded in the document or standard US industry benchmarks; clearly label benchmarks as industry ranges.
-- All dollar estimates must be realistic numbers (0 if none).`;
-
-  if (vertical === 'freight') {
-    return `You are a senior US Freight Audit & Payment (FAP) and Trucking Profit Analyst at VantagePaths.com.
-Audit the provided freight invoice, carrier rate confirmation, or brokerage load sheet for:
-1. Linehaul discrepancies vs contracted rate-con and actual road mileage.
-2. Inflated Fuel Surcharges (FSC > 28–32% without DOE/EIA diesel justification).
-3. Unverified detention, layover, TONU, residential/limited-access fees on commercial docks, duplicate lumper charges, or arbitrary admin fees.
-4. Broker payment-term traps (excessive late fees, missing BOL timestamp proof).
-${commonSchema}`;
+  if (variant === 'signed-contract') {
+    return `You are a senior US Consumer Auto Finance & Truth-in-Lending (TILA) Contract Analyst at VantagePaths.com.
+Decode this signed Retail Installment Sale Contract for:
+1. Optional cancellable F&I add-ons rolled into Amount Financed (VSC/Extended Warranty, GAP Waiver, Tire & Wheel, Maintenance) + free-look/prorated principal refund & compound interest savings.
+2. Dealer APR markup vs credit union refinance rates once LTV drops.
+3. Non-cancellable dealer junk packs folded into Cash Price vs statutory fees.
+Generate a self-service F&I Cancellation Demand Letter in counterOfferScript.
+${schema}`;
   }
 
-  if (vertical === 'auto') {
-    return `You are an elite US Auto Buyer Advocate and Finance/Lease Desk Auditor at VantagePaths.com.
-Audit the provided dealership Out-The-Door (OTD) worksheet, buyer's order, or lease quote for:
-1. Dealer-installed junk add-ons (nitrogen tires, VIN etch, pulse brake lights, paint/fabric protection, ceramic coat, prep fees).
-2. Excess documentation/admin fees above state caps or reasonable $150–$250 benchmarks.
-3. Dealer APR reserve markups (comparing quoted APR vs prime ~5.5–6.5% credit union rates) or hidden lease money factor markups (MF × 2400).
-4. Inflated dealer GAP insurance ($900–$1,400 vs $250–$400 via credit union/insurer) and market adjustments.
-${commonSchema}`;
+  if (variant === 'insurance-dec') {
+    return `You are an independent US Auto Insurance Policy Auditor at VantagePaths.com.
+Audit this Auto Insurance Declarations Page for:
+1. Renewal "loyalty penalty" rate hikes despite clean driving record.
+2. Low $250/$500 collision/comp deductibles vs $1,000 break-even savings.
+3. Insurer Roadside Assistance CLUE-claim traps (recommend dropping & using AAA/card instead).
+4. Adding ~$5/mo insurer Loan/Lease Payoff coverage so the driver can cancel $1,195 dealership GAP.
+Generate a clean 1-page Zero-Spam Apples-to-Apples Email Quote Request in counterOfferScript.
+${schema}`;
   }
 
-  return `You are a licensed-grade US Construction Bid Auditor and Property Insurance Claim Analyst at VantagePaths.com.
-Audit the provided contractor bid, home renovation quote, or storm insurance Xactimate estimate for:
-1. Lump-sum opacity (missing per-square / per-unit material & labor breakdown or vague "builder grade" materials).
-2. Pricing inflated above regional fair per-sq-ft benchmarks.
-3. Missing IRC building code items (drip edge, ice & water shield, starter strip, permits, O&P on 3+ trade insurance claims).
-4. Predatory payment schedules (>25% upfront deposit), open-ended decking/change-order pricing, or harsh cancellation penalties.
-${commonSchema}`;
+  return `You are an elite US Auto Buyer Advocate and Finance/Lease Desk Auditor at VantagePaths.com.
+Audit this dealership Out-The-Door (OTD) worksheet, buyer's order, or lease quote for:
+1. Optional dealer-installed add-ons (nitrogen, VIN etch, pulse brake, ceramic/paint protection, prep fees).
+2. Excess documentation/admin fees above state statutory caps or ~$200 benchmarks.
+3. Dealer APR reserve markups (vs prime ~5.5–6.2% credit union rates) or lease money factor markups (MF × 2400).
+4. Overpriced dealer GAP ($900–$1,400 vs ~$250 insurer/credit union) and market adjustments.
+Generate a firm, ready-to-send OTD Counter-Offer Email in counterOfferScript.
+${schema}`;
 }
 
 function buildDeterministicFallback(
-  vertical: AuditVerticalId,
+  variant: AutoDocVariant,
   fileName: string,
   rawText: string
 ): Omit<
@@ -576,261 +337,239 @@ function buildDeterministicFallback(
   | 'unlockMethod'
   | 'stripeSessionId'
 > {
-  const moneyMatches = [...rawText.matchAll(/\$\s?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?|[0-9]+(?:\.[0-9]{2})?)/g)]
+  const moneyMatches = [
+    ...rawText.matchAll(/\$\s?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?|[0-9]+(?:\.[0-9]{2})?)/g),
+  ]
     .map((m) => parseFloat(m[1].replace(/,/g, '')))
     .filter((n) => Number.isFinite(n) && n > 0);
   const largestAmount = moneyMatches.length > 0 ? Math.max(...moneyMatches) : null;
 
-  if (vertical === 'freight') {
-    const billed = largestAmount ?? 5100.5;
-    const estSavings = billed > 4000 ? 1178 : Math.round(billed * 0.16);
-    const fairLow = Math.max(500, Math.round(billed - estSavings - 120));
-    const fairHigh = Math.max(fairLow + 150, Math.round(billed - estSavings + 120));
+  if (variant === 'signed-contract') {
+    const amtFinanced = 43620;
     return {
-      vertical,
+      vertical: 'auto',
       fileName,
-      documentSummary: `Deterministic audit of ${fileName} (billed total ~$${billed.toLocaleString()}). Detected fuel surcharge inflation, unverified accessorials, and rate-con linehaul drift.`,
-      verdictLabel: '4 High-Risk Billing Anomalies Flagged',
+      documentSummary: `Self-service TILA contract breakdown of ${fileName} ($${amtFinanced.toLocaleString()} Amount Financed @ 8.99% APR). Identified $5,585 in cancellable F&I add-ons plus ~$1,610 in avoidable compound loan interest.`,
+      verdictLabel: '3 Cancellable F&I Add-Ons + Refi Opportunity ($7,195 Value)',
       verdictTone: 'high_risk',
-      estimatedSavingsUsd: estSavings,
-      billedTotalUsd: billed,
-      fairRangeLabel: `$${fairLow.toLocaleString()} – $${fairHigh.toLocaleString()}`,
+      estimatedSavingsUsd: 7195,
+      billedTotalUsd: amtFinanced,
+      fairRangeLabel: '$38,035 Clean Principal @ ~5.99% Refi',
       freeFlags: [
         {
           level: 'CRITICAL',
-          title: 'Fuel Surcharge (FSC) Exceeds DOE/EIA Benchmark',
+          title: '$5,585 in Optional Cancellable F&I Contracts Rolled Into Loan',
           detail:
-            'Quoted fuel surcharge is ~13.5 percentage points above the standard DOE regional diesel schedule for this lane, adding ~$477 in excess fuel billing.',
-          estimatedImpactUsd: 477,
+            'Fidelity VSC ($3,495), Dealer GAP ($1,195), and Tire & Wheel ($895) are 100% optional and eligible for full refund inside the 30-day free-look window (or prorated after).',
+          estimatedImpactUsd: 5585,
         },
         {
           level: 'CRITICAL',
-          title: 'Unverified Detention & Commercial Limited-Access Fees',
+          title: '$1,610+ in Compound Interest Eliminated Upon Cancellation',
           detail:
-            'Detention billed without signed BOL in/out timestamps, plus a residential/limited-access surcharge applied to a commercial loading dock.',
-          estimatedImpactUsd: 466,
+            'Applying the $5,585 refund to your 8.99% principal balance eliminates ~$1,610 in future interest and lowers your Loan-to-Value so you can refinance.',
+          estimatedImpactUsd: 1610,
         },
       ],
       lockedFlags: [
         {
-          level: 'CRITICAL',
-          title: 'Duplicate Lumper Handling Fee',
-          detail:
-            'Lumper fee billed on carrier invoice despite prior EFS payment receipt; request proof of secondary receipt or remove immediately.',
-          estimatedImpactUsd: 195,
-        },
-        {
           level: 'WARNING',
-          title: 'Linehaul & Mileage Drift vs Rate Confirmation',
+          title: '8.99% Dealer APR Reserve Markup — Refinance After Refund Posts',
           detail:
-            'Billed linehaul and mileage exceed contracted rate-con figures without a signed revised rate confirmation.',
-          estimatedImpactUsd: 200,
+            'Once the $5,585 principal credit posts to your lender account, refinancing $38,035 down to ~5.99% cuts your monthly payment by ~$165/mo.',
+          estimatedImpactUsd: 3400,
         },
         {
           level: 'INFO',
-          title: 'Non-Contracted Paperwork Admin Fee',
+          title: '$1,890 Physical Add-Ons Folded Into Cash Price',
           detail:
-            'Arbitrary $45 invoice processing fee is not authorized under standard broker/shipper rate agreements.',
-          estimatedImpactUsd: 45,
+            'Paint/Fabric ($1,295) and Pulse Brake ($595) were folded into Line 1 Cash Price; check ancillary forms for 30-day appearance warranty cancellation clauses.',
+          estimatedImpactUsd: 1890,
         },
       ],
       lineItems: [
-        { label: 'Linehaul Base Charge', quotedAmount: '$3,150', benchmarkAmount: '$2,950 (Rate-Con)', status: 'OVERCHARGED' },
-        { label: 'Fuel Surcharge (FSC)', quotedAmount: '$1,244 (39.5%)', benchmarkAmount: '$767 (26% EIA)', status: 'OVERCHARGED' },
-        { label: 'Detention (2.25 hrs)', quotedAmount: '$281', benchmarkAmount: '$0 (No BOL Times)', status: 'SUSPECT' },
-        { label: 'Limited Access Fee', quotedAmount: '$185', benchmarkAmount: '$0 (Commercial Dock)', status: 'OVERCHARGED' },
-        { label: 'Lumper & Admin Fees', quotedAmount: '$240', benchmarkAmount: '$0 (Paid via EFS)', status: 'OVERCHARGED' },
+        { label: 'Fidelity Extended Warranty (VSC)', quotedAmount: '$3,495', benchmarkAmount: '100% Cancellable', status: 'OVERCHARGED' },
+        { label: 'Dealer GAP Debt Waiver', quotedAmount: '$1,195', benchmarkAmount: '~$250 Insurer GAP', status: 'OVERCHARGED' },
+        { label: 'Tire & Wheel Road Hazard', quotedAmount: '$895', benchmarkAmount: '100% Cancellable', status: 'OVERCHARGED' },
+        { label: 'Contract APR (72 mos)', quotedAmount: '8.99% ($784/mo)', benchmarkAmount: '~5.99% Credit Union', status: 'SUSPECT' },
+        { label: 'Texas Doc Fee', quotedAmount: '$225', benchmarkAmount: '$225 TX Cap', status: 'FAIR' },
       ],
-      counterOfferSubject: 'Invoice Dispute & Revised Settlement Request — Load #LD-44910',
-      counterOfferScript: `Hi Billing Team,
+      counterOfferSubject: 'FORMAL WRITTEN NOTICE OF F&I CONTRACT CANCELLATION — FULL FREE-LOOK REFUND',
+      counterOfferScript: `TO: Plan Administrator Cancellations Dept. & Metro Valley Motors F&I Director
 
-We audited Invoice #INV-8842 against the signed Rate Confirmation for Load #LD-44910 and identified $1,178+ in unauthorized or unsupported variances:
-1. Linehaul must match the signed Rate Confirmation ($2,950.00) rather than $3,150.00.
-2. Fuel Surcharge is billed at 39.5% vs the contracted 26% DOE schedule (adjustment: -$477.25).
-3. Detention ($281.25) lacks signed BOL in/out timestamps, Limited Access ($185) does not apply to Commercial Warehouse Dock #14, and the $195 lumper charge duplicates EFS Receipt #L-209.
-4. The $45 paperwork admin fee is not in our carrier packet.
+Please accept this signed notice to immediately cancel my optional Vehicle Service Contract ($3,495), GAP Debt Waiver ($1,195), and Tire & Wheel Plan ($895) purchased 22 days ago (Current Odometer: 1,140 miles, zero claims filed).
 
-Please issue a corrected invoice for $3,717.00 (Linehaul + 26% FSC) and we will release payment immediately on standard terms.
+Because this written notice is submitted within the 30-day free-look period, please remit the 100% full refund ($5,585.00) directly to my auto lienholder to be applied to my principal balance, and email written confirmation within 5 business days.
 
-Best regards,
-Accounts Payable / Dispatch`,
+Sincerely,
+[Buyer Signature]`,
       negotiationChecklist: [
-        'Attach the original signed Rate Confirmation and EFS lumper receipt to your reply.',
-        'Require signed BOL arrival/departure timestamps before approving any detention billing.',
-        'Place invoice in formal dispute status in AP before the Net-15 due date to block late penalties.',
+        'Attach a clear timestamped photo of your current odometer (1,140 miles) to lock in your cancellation date.',
+        'Email AND mail via USPS Certified Mail directly to the Plan Administrator + CC the Dealership F&I Director.',
+        'Once the $5,585 principal credit posts on your loan portal, compare soft-pull credit union refinance rates.',
       ],
       deterministicMetrics: [
-        { label: 'Billed Total', value: `$${billed.toLocaleString()}` },
-        { label: 'Potential Overcharge', value: `$${estSavings.toLocaleString()}` },
-        { label: 'Target Revised Settlement', value: `$${Math.round(billed - estSavings).toLocaleString()}` },
+        { label: 'Cancellable Principal', value: '$5,585' },
+        { label: 'Avoided Loan Interest', value: '+$1,610' },
+        { label: 'Total Recoverable Value', value: '$7,195' },
       ],
     };
   }
 
-  if (vertical === 'auto') {
-    const otd = largestAmount ?? 46842;
-    const estSavings = otd > 30000 ? 6480 : Math.round(otd * 0.14);
+  if (variant === 'insurance-dec') {
     return {
-      vertical,
+      vertical: 'auto',
       fileName,
-      documentSummary: `Deterministic OTD & finance desk audit of ${fileName} (~$${otd.toLocaleString()} OTD). Detected high-margin dealer add-ons, excess doc fee, and a ~3.1% APR reserve markup.`,
-      verdictLabel: 'Overpriced Deal — 5 Removable Fees & APR Markup',
+      documentSummary: `Declarations Page audit of ${fileName} ($1,248 / 6-month renewal = $2,496/yr). Detected a +26.7% loyalty rate hike, expensive $250 deductibles, and a CLUE roadside trap.`,
+      verdictLabel: '26.7% Loyalty Penalty + 3 Policy Optimizations (~$640/yr Savings)',
       verdictTone: 'high_risk',
-      estimatedSavingsUsd: estSavings,
-      billedTotalUsd: otd,
-      fairRangeLabel: `$${Math.round(otd - 5200).toLocaleString()} – $${Math.round(otd - 3900).toLocaleString()} OTD`,
+      estimatedSavingsUsd: 640,
+      billedTotalUsd: 2496,
+      fairRangeLabel: '$1,750 – $1,920 / yr (100/300/100)',
       freeFlags: [
         {
           level: 'CRITICAL',
-          title: '$2,789 in High-Margin Dealer Add-Ons',
+          title: '+26.7% Renewal Loyalty Hike Despite Clean Record',
           detail:
-            'Pulse Brake/Nitrogen ($699), Ceramic Paint Shield ($1,495), and VIN Etching ($595) are optional dealer profit add-ons with <$150 wholesale cost.',
-          estimatedImpactUsd: 2789,
+            'Your 6-month rate jumped from $985 to $1,248 (+$526/yr) with zero tickets or claims. Re-shopping identical 100/300/100 limits typically recovers 18%–25%.',
+          estimatedImpactUsd: 460,
         },
         {
-          level: 'CRITICAL',
-          title: 'Dealer APR Reserve Markup (+3.10% Above Prime)',
+          level: 'WARNING',
+          title: '$250 Collision Deductible Costs ~$340/yr Extra',
           detail:
-            'Quoted 8.89% APR on a 765 credit score is ~3.1 points above prime credit union rates (~5.79%), adding ~$4,490 in extra interest over 72 months.',
-          estimatedImpactUsd: 4490,
+            'Raising collision deductible from $250 to $1,000 saves ~$340/yr — breaking even on the $750 difference in ~26 claim-free months.',
+          estimatedImpactUsd: 340,
         },
       ],
       lockedFlags: [
         {
+          level: 'WARNING',
+          title: 'Drop Carrier Roadside ($78/yr) to Avoid CLUE Claim Flags',
+          detail:
+            'Filing a $90 tow through your auto policy often logs as a claim on your CLUE report and triggers renewal surcharges. Use AAA or a travel card instead.',
+          estimatedImpactUsd: 78,
+        },
+        {
           level: 'CRITICAL',
-          title: 'Doc Fee Exceeds State Cap + Bogus Prep Fee',
+          title: 'Add ~$5/mo Insurer Loan/Lease Payoff & Cancel $1,195 Dealer GAP',
           detail:
-            'Doc fee ($995) plus Electronic Filing/Prep ($449) totals $1,444 vs the $175 state cap — $1,269 in pure dealer margin.',
-          estimatedImpactUsd: 1269,
-        },
-        {
-          level: 'WARNING',
-          title: 'Overpriced Dealer GAP Waiver ($1,195)',
-          detail:
-            'Comparable GAP coverage costs $300–$450 through a credit union or your auto insurer ($750+ savings).',
-          estimatedImpactUsd: 750,
-        },
-        {
-          level: 'WARNING',
-          title: '$1,500 Market Adjustment Above MSRP',
-          detail:
-            'Market adjustments on high-volume trims are routinely waived when competing dealers quote straight MSRP or below.',
-          estimatedImpactUsd: 1500,
+            'Adding Loan/Lease Payoff here lets you immediately cancel your $1,195 financed dealership GAP waiver for a principal refund!',
+          estimatedImpactUsd: 950,
         },
       ],
       lineItems: [
-        { label: 'Selling Price vs MSRP', quotedAmount: '$37,985', benchmarkAmount: '$36,485 MSRP', status: 'OVERCHARGED' },
-        { label: 'Paint / Nitrogen / VIN Etch', quotedAmount: '$2,789', benchmarkAmount: '$0 (Optional)', status: 'OVERCHARGED' },
-        { label: 'Doc + E-Filing/Prep Fees', quotedAmount: '$1,444', benchmarkAmount: '$175 State Cap', status: 'OVERCHARGED' },
-        { label: 'Dealer GAP Insurance', quotedAmount: '$1,195', benchmarkAmount: '$350 Credit Union', status: 'OVERCHARGED' },
-        { label: 'Quoted APR (72 mos)', quotedAmount: '8.89% ($770/mo)', benchmarkAmount: '5.79% (~$615/mo)', status: 'OVERCHARGED' },
+        { label: '6-Month Renewal Rate', quotedAmount: '$1,248 ($2,496/yr)', benchmarkAmount: '$890–$960 / 6mo', status: 'OVERCHARGED' },
+        { label: 'BI / PD Liability (100/300/100)', quotedAmount: '$540 / 6mo', benchmarkAmount: 'Strong Asset Protection', status: 'FAIR' },
+        { label: 'Collision ($250 Deductible)', quotedAmount: '$388 / 6mo', benchmarkAmount: 'Raise to $1,000 Ded.', status: 'OVERCHARGED' },
+        { label: 'Carrier Roadside Towing', quotedAmount: '$39 / 6mo', benchmarkAmount: 'Exclude (CLUE Risk)', status: 'SUSPECT' },
+        { label: 'Loan/Lease Payoff (GAP)', quotedAmount: 'Excluded', benchmarkAmount: 'Add (~$30/6mo) vs Dealer GAP', status: 'MISSING' },
       ],
-      counterOfferSubject: 'Ready to Buy Today — Clean Out-The-Door Offer on 2026 RAV4 Hybrid XLE',
-      counterOfferScript: `Hi [Sales Manager],
+      counterOfferSubject: 'Apples-to-Apples Auto Insurance Quote Request (Email Only — No Phone Calls)',
+      counterOfferScript: `Hi [Independent Agent],
 
-Thank you for sending the worksheet on the 2026 RAV4 Hybrid XLE. I am pre-approved with my credit union at 5.79% APR and ready to finalize the purchase today if we can clean up the OTD numbers:
+Please email an apples-to-apples 6-month and 12-month quote for my 2024 Toyota RAV4 Hybrid XLE (ZIP 75024, clean record) matching these exact coverages:
+- Liability (BI/PD): 100/300/100 | UM/UIM: 100/300
+- Comprehensive Deductible: $500 | Collision Deductible: $1,000
+- Roadside Assistance: EXCLUDE | Loan/Lease Payoff (GAP): INCLUDE
 
-1. Vehicle Selling Price: $36,485 (MSRP, removing the $1,500 market adjustment).
-2. Remove all dealer add-ons: Ceramic Shield ($1,495), Pulse/Nitrogen ($699), VIN Etch ($595), Electronic Prep ($449), and Dealer GAP ($1,195).
-3. Adjust Doc Fee to the statutory $175 cap + actual tax and DMV title/reg.
+My current renewal is $1,248 / 6 months. Please reply by email only with paid-in-full and autopay discounts itemized.
 
-That brings my clean Out-The-Door offer to $39,710. If you can match or beat 5.79% APR with your lenders, I am happy to finance in-house. Send over the revised buyer's order and I can come in to sign today.
-
-Best,
+Thank you,
 [Your Name]`,
       negotiationChecklist: [
-        'Get a 5-minute pre-approval quote from a local credit union before walking into the F&I office.',
-        'Negotiate strictly on Out-The-Door (OTD) total price — never monthly payment.',
-        'If they claim add-ons are "already installed", insist they discount the selling price by the exact add-on total.',
+        'Send the Quote Spec above to 2–3 local independent brokers (they shop 10+ carriers at once with zero spam).',
+        'Confirm new policy + Loan/Lease Payoff is active BEFORE cancelling your old policy or dealership GAP.',
+        'Set a 6-month calendar reminder 30 days before your next renewal.',
       ],
       deterministicMetrics: [
-        { label: 'Quoted OTD Price', value: `$${otd.toLocaleString()}` },
-        { label: 'Removable Fees + Markup', value: `$${estSavings.toLocaleString()}` },
-        { label: 'Target Clean OTD', value: `$${Math.max(5000, Math.round(otd - 7132)).toLocaleString()}` },
+        { label: 'Current Annualized Cost', value: '$2,496/yr' },
+        { label: 'Renewal Jump', value: '+26.7%' },
+        { label: 'Est. Annual Re-Shop Savings', value: '~$640/yr' },
       ],
     };
   }
 
-  const bid = largestAmount ?? 28950;
-  const estSavings = bid > 15000 ? 8450 : Math.round(bid * 0.22);
+  // Default: Dealer OTD Worksheet / Buyer's Order
+  const otd = largestAmount ?? 46842;
+  const estSavings = otd > 30000 ? 6480 : Math.round(otd * 0.14);
   return {
-    vertical,
+    vertical: 'auto',
     fileName,
-    documentSummary: `Deterministic bid & scope audit of ${fileName} (~$${bid.toLocaleString()} quoted). Flagged above-market per-square pricing, missing IRC code items, and an aggressive 50% upfront deposit.`,
-    verdictLabel: 'High-Risk Contractor Bid — Overpriced & Missing Code Items',
+    documentSummary: `Deterministic OTD & finance desk audit of ${fileName} (~$${otd.toLocaleString()} OTD). Detected high-margin dealer add-ons, excess doc fee, and a ~3.1% APR reserve markup.`,
+    verdictLabel: 'Overpriced Deal — 5 Removable Fees & APR Markup',
     verdictTone: 'high_risk',
     estimatedSavingsUsd: estSavings,
-    billedTotalUsd: bid,
-    fairRangeLabel: '$14,900 – $19,800 (24 Squares Installed)',
+    billedTotalUsd: otd,
+    fairRangeLabel: `$${Math.round(otd - 5200).toLocaleString()} – $${Math.round(otd - 3900).toLocaleString()} OTD`,
     freeFlags: [
       {
         level: 'CRITICAL',
-        title: 'Per-Square Price ($1,206/sq) Exceeds Fair Regional Range',
+        title: '$2,789 in High-Margin Dealer Add-Ons',
         detail:
-          'A 24-square architectural shingle replacement typically prices between $620 and $825/square ($14.9k–$19.8k). This lump-sum quote is ~$8,450+ above upper market benchmarks.',
-        estimatedImpactUsd: 8450,
+          'Pulse Brake/Nitrogen ($699), Ceramic Paint Shield ($1,495), and VIN Etching ($595) are 100% optional dealer profit add-ons.',
+        estimatedImpactUsd: 2789,
       },
       {
         level: 'CRITICAL',
-        title: 'Missing Mandatory IRC Code Items (Drip Edge & Ice/Water Shield)',
+        title: 'Dealer APR Reserve Markup (+3.10% Above Prime)',
         detail:
-          'Proposal omits new metal drip edge (IRC R905.2.8.5) and valley/eave ice & water barrier, risking inspection failure and voided shingle warranties.',
-        estimatedImpactUsd: 1650,
+          'Quoted 8.89% APR on a 765 credit score is ~3.1 points above prime credit union rates (~5.79%), adding ~$4,490 in extra interest over 72 months.',
+        estimatedImpactUsd: 4490,
       },
     ],
     lockedFlags: [
       {
         level: 'CRITICAL',
-        title: 'Predatory 50% Upfront Deposit + 25% Cancellation Penalty',
+        title: 'Doc Fee Exceeds State Cap + Bogus Prep Fee',
         detail:
-          'Reputable contractors require 10%–20% upon material delivery — never 50% at signing — and state home-improvement rules restrict punitive cancellation clauses.',
-        estimatedImpactUsd: 0,
+          'Doc fee ($995) plus Electronic Filing/Prep ($449) totals $1,444 vs the $175 state cap — $1,269 in pure dealer margin.',
+        estimatedImpactUsd: 1269,
       },
       {
         level: 'WARNING',
-        title: 'Open-Ended Plywood Decking Rate ($135/sheet)',
+        title: 'Overpriced Dealer GAP Waiver ($1,195)',
         detail:
-          'Standard OSB decking replacement is $75–$95/sheet installed with photo proof required for every replaced sheet.',
-        estimatedImpactUsd: 400,
+          'Comparable GAP coverage costs $250–$350 through a credit union or your auto insurer ($800+ savings).',
+        estimatedImpactUsd: 800,
       },
       {
         level: 'WARNING',
-        title: 'Insurance Claim Underpayment Opportunity (O&P + Code Supplements)',
+        title: '$1,500 Market Adjustment Above MSRP',
         detail:
-          'Insurer ACV of $14,200 omits mandatory code upgrades (drip edge, starter strip) and Overhead & Profit if multiple trades are impacted — file a formal supplement.',
-        estimatedImpactUsd: 3800,
+          'Market adjustments on volume trims are routinely waived when competing dealers quote straight MSRP or below.',
+        estimatedImpactUsd: 1500,
       },
     ],
     lineItems: [
-      { label: '24-Sq Architectural Roof', quotedAmount: '$28,950 ($1,206/sq)', benchmarkAmount: '$15,000–$19,800', status: 'OVERCHARGED' },
-      { label: 'Metal Drip Edge & Ice/Water', quotedAmount: 'Excluded / Re-used', benchmarkAmount: 'Required by IRC Code', status: 'MISSING' },
-      { label: 'OSB Decking Replacement', quotedAmount: '$135 / sheet', benchmarkAmount: '$75–$95 / sheet', status: 'OVERCHARGED' },
-      { label: 'Building Permit & Inspection', quotedAmount: 'Homeowner Resp.', benchmarkAmount: 'Contractor Included', status: 'MISSING' },
-      { label: 'Deposit Terms', quotedAmount: '50% at Signing', benchmarkAmount: '15%–20% at Material Drop', status: 'SUSPECT' },
+      { label: 'Selling Price vs MSRP', quotedAmount: '$37,985', benchmarkAmount: '$36,485 MSRP', status: 'OVERCHARGED' },
+      { label: 'Paint / Nitrogen / VIN Etch', quotedAmount: '$2,789', benchmarkAmount: '$0 (Optional)', status: 'OVERCHARGED' },
+      { label: 'Doc + E-Filing/Prep Fees', quotedAmount: '$1,444', benchmarkAmount: '$175 State Cap', status: 'OVERCHARGED' },
+      { label: 'Dealer GAP Insurance', quotedAmount: '$1,195', benchmarkAmount: '$300 Credit Union', status: 'OVERCHARGED' },
+      { label: 'Quoted APR (72 mos)', quotedAmount: '8.89% ($770/mo)', benchmarkAmount: '5.79% (~$615/mo)', status: 'OVERCHARGED' },
     ],
-    counterOfferSubject: 'Request for Itemized Revision & Code-Compliant Scope — Proposal #Q-7719',
-    counterOfferScript: `Hi [Contractor Name],
+    counterOfferSubject: 'Ready to Buy Today — Clean Out-The-Door Offer on 2026 RAV4 Hybrid XLE',
+    counterOfferScript: `Hi [Internet Sales Manager],
 
-Thanks for submitting Proposal #Q-7719 for our 24-square roof replacement. Before we select a contractor, we need an itemized revision addressing five items:
+Thank you for sending the worksheet on the 2026 RAV4 Hybrid XLE. I am pre-approved with my credit union at 5.79% APR and ready to place a deposit today if we clean up the Out-The-Door numbers:
 
-1. Please break out exact shingle brand/model (e.g., GAF Timberline HDZ or Owens Corning Duration), per-square material + labor rate, and bring total pricing in line with the local $16,500–$19,500 market range.
-2. Include new metal drip edge (IRC R905.2.8.5), ice & water shield in all valleys/eaves, starter strip shingles, and municipal permitting/inspection in the scope.
-3. Cap OSB decking replacement at $85/sheet with timestamped before-photos of each damaged sheet.
-4. Revise payment terms to 15% upon material delivery, 50% at dry-in, and 35% after final inspection and lien waiver.
+1. Vehicle Selling Price: $36,485 (MSRP, removing the $1,500 market adjustment).
+2. Remove all optional dealer add-ons: Ceramic Shield ($1,495), Pulse/Nitrogen ($699), VIN Etch ($595), Electronic Prep ($449), and Dealer GAP ($1,195).
+3. Adjust Doc Fee to the statutory $175 cap + actual tax and DMV title/reg.
 
-If you can send an updated itemized agreement and certificate of insurance, we'd love to keep you in the running.
+That brings my clean Out-The-Door offer to $39,710. If your lenders can beat 5.79% APR with zero add-ons, I am happy to finance in-house. Please email the revised Buyer's Order PDF so I can review from home.
 
-Best regards,
-[Homeowner Name]`,
+Best,
+[Your Name]`,
     negotiationChecklist: [
-      'Collect at least 2 competing itemized bids specifying the exact same shingle product & underlayment.',
-      'Request an active Certificate of Insurance (General Liability + Workers Comp) sent directly from their agent.',
-      'For storm claims, submit the missing IRC code items (drip edge, ice & water, starter) to your adjuster for RCV supplement approval.',
+      'Hold a real outside credit union pre-approval before signing so F&I cannot mark up your rate.',
+      'Negotiate strictly on itemized Out-The-Door (OTD) total price — never monthly payment.',
+      'Request the final Buyer’s Order & TILA Contract PDF by email 24 hours before pickup or delivery.',
     ],
     deterministicMetrics: [
-      { label: 'Quoted Bid', value: `$${bid.toLocaleString()}` },
-      { label: 'Fair Regional Benchmark', value: '$14,900 – $19,800' },
-      { label: 'Estimated Overpay Risk', value: `$${estSavings.toLocaleString()}` },
+      { label: 'Quoted OTD Price', value: `$${otd.toLocaleString()}` },
+      { label: 'Removable Fees + Markup', value: `$${estSavings.toLocaleString()}` },
+      { label: 'Target Clean OTD', value: `$${Math.max(5000, Math.round(otd - 7132)).toLocaleString()}` },
     ],
   };
 }
@@ -878,17 +617,13 @@ export function isStripeLiveConfigured(env: NodeJS.ProcessEnv = process.env): bo
   return key.length > 10 && !key.startsWith('MY_');
 }
 
-/**
- * Strictly enforces server-side paywall redaction.
- * Locked findings, counter-offer email, and checklist are NEVER sent while isUnlocked === false.
- */
 export function toPublicAuditResponse(
   record: StoredAuditRecord,
   stripeLive = isStripeLiveConfigured()
 ): PublicAuditResponse {
   return {
     auditId: record.auditId,
-    vertical: record.vertical,
+    vertical: 'auto',
     createdUtc: record.createdUtc,
     fileName: record.fileName,
     documentSummary: record.documentSummary,
@@ -911,13 +646,14 @@ export function toPublicAuditResponse(
     isUnlocked: record.isUnlocked,
     unlockedUtc: record.unlockedUtc,
     unlockMethod: record.unlockMethod,
-    pricing: VERTICAL_PRICING[record.vertical],
+    pricing: VERTICAL_PRICING.auto,
     stripeLiveConfigured: stripeLive,
   };
 }
 
 export interface RunAuditParams {
-  vertical: AuditVerticalId;
+  vertical?: AuditVerticalId;
+  docVariant?: AutoDocVariant;
   fileName: string;
   mimeType: string;
   rawText?: string;
@@ -931,9 +667,10 @@ export interface RunAuditParams {
 }
 
 export async function runDocumentAudit(params: RunAuditParams): Promise<PublicAuditResponse> {
-  const auditId = `vp_${params.vertical.replace('-', '')}_${crypto.randomBytes(5).toString('hex')}`;
+  const auditId = `vp_auto_${crypto.randomBytes(5).toString('hex')}`;
   const createdUtc = new Date().toISOString();
   const textSnippet = (params.rawText || '').trim().slice(0, 18000);
+  const variant = detectDocVariant(textSnippet, params.docVariant);
   const isBinaryAttachment = Boolean(
     params.fileBuffer &&
       params.fileBuffer.length > 0 &&
@@ -942,15 +679,12 @@ export async function runDocumentAudit(params: RunAuditParams): Promise<PublicAu
 
   params.db.logEvent({
     eventName: 'audit_started',
-    vertical: params.vertical,
+    vertical: 'auto',
     auditId,
-    metadata: { fileName: params.fileName, mimeType: params.mimeType, isBinaryAttachment },
+    metadata: { fileName: params.fileName, mimeType: params.mimeType, variant, isBinaryAttachment },
   });
 
-  const userPromptParts = [
-    `Vertical: ${params.vertical.toUpperCase()}`,
-    `File Name: ${params.fileName}`,
-  ];
+  const userPromptParts = [`Document Type: ${variant.toUpperCase()}`, `File Name: ${params.fileName}`];
   if (params.contextNote?.trim()) {
     userPromptParts.push(`User Context / Notes: ${params.contextNote.trim().slice(0, 1000)}`);
   }
@@ -958,7 +692,7 @@ export async function runDocumentAudit(params: RunAuditParams): Promise<PublicAu
     userPromptParts.push(`Document Text:\n---\n${textSnippet}\n---`);
   } else if (isBinaryAttachment) {
     userPromptParts.push(
-      'Inspect the attached PDF or photo carefully. Extract all line items, totals, rates, percentages, and fine-print clauses, then audit them thoroughly.'
+      'Inspect the attached PDF or photo carefully. Extract all line items, totals, APRs, coverages, and fine-print clauses, then audit them thoroughly.'
     );
   }
 
@@ -970,7 +704,7 @@ export async function runDocumentAudit(params: RunAuditParams): Promise<PublicAu
   try {
     const llmRes = await generateStructuredAuditWithFailover(
       {
-        systemInstruction: getVerticalSystemPrompt(params.vertical),
+        systemInstruction: getSystemPromptForVariant(variant),
         userPrompt: userPromptParts.join('\n\n'),
         attachment: isBinaryAttachment
           ? {
@@ -983,7 +717,7 @@ export async function runDocumentAudit(params: RunAuditParams): Promise<PublicAu
     );
 
     const parsed = parseJsonLoose(llmRes.text);
-    const fallback = buildDeterministicFallback(params.vertical, params.fileName, textSnippet);
+    const fallback = buildDeterministicFallback(variant, params.fileName, textSnippet);
 
     const freeFlags = sanitizeFindings(parsed.freeFlags, 2);
     const lockedFlags = sanitizeFindings(parsed.lockedFlags, 6);
@@ -1005,7 +739,7 @@ export async function runDocumentAudit(params: RunAuditParams): Promise<PublicAu
         : fallback.estimatedSavingsUsd;
 
     recordCore = {
-      vertical: params.vertical,
+      vertical: 'auto',
       fileName: params.fileName,
       documentSummary:
         typeof parsed.documentSummary === 'string' && parsed.documentSummary.trim()
@@ -1059,10 +793,10 @@ export async function runDocumentAudit(params: RunAuditParams): Promise<PublicAu
     modelUsed = llmRes.model;
   } catch (err) {
     console.warn(
-      `[VantagePaths Audit] Free LLM chain unavailable, using deterministic fallback:`,
+      `[VantagePaths Auto] Free LLM chain unavailable, using specialized ${variant} fallback:`,
       err instanceof Error ? err.message : err
     );
-    recordCore = buildDeterministicFallback(params.vertical, params.fileName, textSnippet);
+    recordCore = buildDeterministicFallback(variant, params.fileName, textSnippet);
   }
 
   const stored: StoredAuditRecord = {
@@ -1082,9 +816,10 @@ export async function runDocumentAudit(params: RunAuditParams): Promise<PublicAu
   params.db.saveAudit(stored);
   params.db.logEvent({
     eventName: 'audit_completed',
-    vertical: params.vertical,
+    vertical: 'auto',
     auditId,
     metadata: {
+      variant,
       estimatedSavingsUsd: stored.estimatedSavingsUsd,
       reasoningProvider,
       modelUsed,

@@ -61,6 +61,24 @@ export function App() {
       .catch(() => {});
   }, []);
 
+  // Dynamic per-route & per-state SEO document titles
+  useEffect(() => {
+    const titles: Record<string, string> = {
+      home: 'VantagePaths — Buy & Own a Car From Home Without Getting Played',
+      buy: 'Buy a Car From Home: Anti-Dealer Hunter & Bid-War Room — VantagePaths',
+      rescue: '2-Step Car Loan Rescue & Extended Warranty / GAP Refund Kit — VantagePaths',
+      insurance: 'Zero-Spam Auto Insurance Declarations Audit — VantagePaths',
+      sell: 'Sell or Trade In Your Car for Max Cash (Tax Credit Math) — VantagePaths',
+      states: 'State-by-State Dealer Doc Fee Caps & Car Buyer Laws — VantagePaths',
+      admin: 'Live Revenue & Partner Attribution — VantagePaths',
+    };
+    if (loc.view === 'states' && loc.stateCode) {
+      document.title = `${loc.stateCode} Dealer Doc Fee Cap, Tax Credit & Warranty Refund Laws — VantagePaths`;
+    } else {
+      document.title = titles[loc.view] || titles.home;
+    }
+  }, [loc.view, loc.stateCode]);
+
   // Auto-verify Stripe return (?unlocked=1&session_id=...&audit_id=...)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

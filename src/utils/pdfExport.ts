@@ -1,13 +1,11 @@
-import { jsPDF } from 'jspdf';
 import type { PublicAuditResponse } from '../shared/types';
 
-const VERTICAL_TITLES: Record<PublicAuditResponse['vertical'], string> = {
-  freight: 'FREIGHT INVOICE & RATE-CON AUDIT MEMO',
-  auto: 'AUTO DEALERSHIP OTD & FINANCE AUDIT MEMO',
-  'home-bids': 'CONTRACTOR BID & INSURANCE CLAIM AUDIT MEMO',
-};
-
-export function downloadAuditPdf(audit: PublicAuditResponse): void {
+/**
+ * Lazy-loads jsPDF only when the user actually clicks "Download PDF"
+ * so the initial page load stays ~400 kB lighter and ultra-fast on mobile!
+ */
+export async function downloadAuditPdf(audit: PublicAuditResponse): Promise<void> {
+  const { jsPDF } = await import('jspdf');
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -23,16 +21,16 @@ export function downloadAuditPdf(audit: PublicAuditResponse): void {
   };
 
   // Header Bar
-  doc.setFillColor(10, 15, 28);
+  doc.setFillColor(11, 21, 40);
   doc.rect(0, 0, pageWidth, 86, 'F');
-  doc.setTextColor(52, 211, 153);
+  doc.setTextColor(45, 212, 191);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('VANTAGEPATHS.COM  •  DEAL, QUOTE & CONTRACT AUDIT HUB', margin, 32);
+  doc.text('VANTAGEPATHS.COM  •  INDEPENDENT SELF-SERVICE AUTO ADVOCATE', margin, 32);
 
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
-  doc.text(VERTICAL_TITLES[audit.vertical], margin, 54);
+  doc.text('AUTO DEAL, CONTRACT & REFUND AUDIT PACKET', margin, 54);
 
   doc.setTextColor(148, 163, 184);
   doc.setFont('helvetica', 'normal');
@@ -48,17 +46,17 @@ export function downloadAuditPdf(audit: PublicAuditResponse): void {
   y = 108;
 
   // Verdict & Savings Banner
-  doc.setFillColor(241, 245, 249);
+  doc.setFillColor(240, 253, 250);
   doc.roundedRect(margin, y, maxWidth, 72, 6, 6, 'F');
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(11, 21, 40);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text(audit.verdictLabel, margin + 14, y + 24);
+  doc.text(audit.verdictLabel.slice(0, 68), margin + 14, y + 24);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(51, 65, 85);
-  doc.text(`Fair Market Range: ${audit.fairRangeLabel}`, margin + 14, y + 44);
+  doc.text(`Fair Benchmark: ${audit.fairRangeLabel}`, margin + 14, y + 44);
   if (audit.billedTotalUsd != null) {
     doc.text(
       `Document Quoted Total: $${audit.billedTotalUsd.toLocaleString()}`,
@@ -67,19 +65,19 @@ export function downloadAuditPdf(audit: PublicAuditResponse): void {
     );
   }
 
-  doc.setTextColor(5, 150, 105);
+  doc.setTextColor(15, 118, 110);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(18);
   const savingsLabel = `$${audit.estimatedSavingsUsd.toLocaleString()}`;
   doc.text(savingsLabel, pageWidth - margin - 14, y + 34, { align: 'right' });
   doc.setFontSize(8.5);
   doc.setTextColor(71, 85, 105);
-  doc.text('EST. RECOVERABLE SAVINGS', pageWidth - margin - 14, y + 50, { align: 'right' });
+  doc.text('EST. RECOVERABLE VALUE', pageWidth - margin - 14, y + 50, { align: 'right' });
 
   y += 92;
 
   // Summary
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(11, 21, 40);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.text('Executive Summary', margin, y);
@@ -95,7 +93,7 @@ export function downloadAuditPdf(audit: PublicAuditResponse): void {
   // Line-Item Breakdown Table
   if (audit.lineItems.length > 0) {
     ensureSpace(80);
-    doc.setTextColor(15, 23, 42);
+    doc.setTextColor(11, 21, 40);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text('Line-Item Audit Comparison', margin, y);
@@ -124,7 +122,7 @@ export function downloadAuditPdf(audit: PublicAuditResponse): void {
       } else if (item.status === 'SUSPECT') {
         doc.setTextColor(180, 83, 9);
       } else {
-        doc.setTextColor(5, 150, 105);
+        doc.setTextColor(15, 118, 110);
       }
       doc.setFont('helvetica', 'bold');
       doc.text(item.status, pageWidth - margin - 6, y + 10, { align: 'right' });
@@ -139,22 +137,22 @@ export function downloadAuditPdf(audit: PublicAuditResponse): void {
   // All Findings (Free + Unlocked)
   const allFindings = [...audit.freeFlags, ...audit.lockedFlags];
   ensureSpace(60);
-  doc.setTextColor(15, 23, 42);
+  doc.setTextColor(11, 21, 40);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text(`Red-Flag Findings (${allFindings.length})`, margin, y);
+  doc.text(`Audit Findings & Included Escalation Templates (${allFindings.length})`, margin, y);
   y += 16;
 
   for (const f of allFindings) {
     const detailLines = doc.splitTextToSize(f.detail, maxWidth - 14);
     const blockHeight = 20 + detailLines.length * 13 + 10;
-    ensureSpace(blockHeight);
+    ensureSpace(Math.min(140, blockHeight));
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9.5);
     if (f.level === 'CRITICAL') doc.setTextColor(185, 28, 28);
     else if (f.level === 'WARNING') doc.setTextColor(180, 83, 9);
-    else doc.setTextColor(3, 105, 161);
+    else doc.setTextColor(15, 118, 110);
 
     const impactStr =
       f.estimatedImpactUsd && f.estimatedImpactUsd > 0
@@ -166,23 +164,27 @@ export function downloadAuditPdf(audit: PublicAuditResponse): void {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(51, 65, 85);
-    doc.text(detailLines, margin + 10, y);
-    y += detailLines.length * 13 + 8;
+    for (const dLine of detailLines) {
+      ensureSpace(14);
+      doc.text(dLine, margin + 10, y);
+      y += 13;
+    }
+    y += 8;
   }
 
-  // Counter-Offer Script (Unlocked)
+  // Counter-Offer / Cancellation Script
   if (audit.isUnlocked && audit.counterOfferScript) {
     ensureSpace(100);
     y += 6;
-    doc.setTextColor(15, 23, 42);
+    doc.setTextColor(11, 21, 40);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text('Ready-to-Send Counter-Offer / Dispute Script', margin, y);
+    doc.text('Ready-to-Send Self-Service Letter / Email', margin, y);
     y += 16;
 
     if (audit.counterOfferSubject) {
       doc.setFontSize(9.5);
-      doc.setTextColor(15, 23, 42);
+      doc.setTextColor(11, 21, 40);
       doc.text(`Subject: ${audit.counterOfferSubject}`, margin, y);
       y += 15;
     }
@@ -202,10 +204,10 @@ export function downloadAuditPdf(audit: PublicAuditResponse): void {
   // Checklist
   if (audit.isUnlocked && audit.negotiationChecklist.length > 0) {
     ensureSpace(60);
-    doc.setTextColor(15, 23, 42);
+    doc.setTextColor(11, 21, 40);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text('Next-Step Negotiation Checklist', margin, y);
+    doc.text('Step-by-Step Self-Service Checklist', margin, y);
     y += 15;
 
     doc.setFont('helvetica', 'normal');
@@ -228,5 +230,5 @@ export function downloadAuditPdf(audit: PublicAuditResponse): void {
     pageHeight - 24
   );
 
-  doc.save(`VantagePaths_${audit.vertical}_Audit_${audit.auditId}.pdf`);
+  doc.save(`VantagePaths_Auto_${audit.auditId}.pdf`);
 }

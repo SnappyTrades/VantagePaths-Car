@@ -232,7 +232,7 @@ export class AuditDatabase {
       .prepare(`SELECT COUNT(*) AS cnt FROM waitlist`)
       .get() as { cnt: number };
 
-    const verticals: AuditVerticalId[] = ['freight', 'auto', 'home-bids'];
+    const verticals: AuditVerticalId[] = ['auto'];
     const byVertical = verticals.map((v) => {
       const a = this.db
         .prepare(

@@ -1,6 +1,6 @@
-export type AuditVerticalId = 'freight' | 'auto' | 'home-bids';
+export type AuditVerticalId = 'auto';
 
-export type FutureVerticalId = 'contracts' | 'housing';
+export type AutoDocVariant = 'otd' | 'signed-contract' | 'insurance-dec';
 
 export type FindingSeverity = 'CRITICAL' | 'WARNING' | 'INFO';
 
@@ -21,11 +21,11 @@ export interface AuditLineItem {
 }
 
 export interface VerticalPricingPlan {
-  passSku: 'FREIGHT_PACK' | 'AUTO_PASS' | 'HOME_PASS';
+  passSku: 'AUTO_PASS';
   passName: string;
   passPriceUsd: number;
   passDescription: string;
-  proSku: 'PRO_MONTHLY';
+  proSku: 'CERTIFIED_MAIL';
   proName: string;
   proPriceUsd: number;
   proDescription: string;
