@@ -120,9 +120,15 @@ export interface AddOnRefundInput {
   items: AddOnRefundItemInput[];
   // Optional metadata for pre-filled letters
   buyerName?: string;
+  buyerEmail?: string;
+  buyerPhone?: string;
+  buyerAddress?: string;
   dealerName?: string;
   lenderName?: string;
+  administratorId?: string;
   administratorName?: string;
+  administratorAddress?: string;
+  administratorPhone?: string;
   vehicleYmm?: string;
   vin?: string;
   contractNumber?: string;
@@ -944,6 +950,31 @@ export function calculateAddOnRefund(
   };
 }
 
+function getStateStatutoryCitation(stateCode: string, stateName: string): string {
+  const citations: Record<string, string> = {
+    CA: 'California Civil Code § 1794.41 (Song-Beverly Consumer Warranty Act — 60-day full refund window on new cars, 30 days on used, max $25 or 10% cancellation fee)',
+    FL: 'Florida Statutes § 634.121 (Motor Vehicle Service Agreement Act — 60-day 100% refund window & statutory proration protections)',
+    TX: 'Texas Occupations Code Chapter 1304 (Service Contract Providers & Administrators Act — 100% refund inside free-look; 10% monthly statutory penalty if refund unpaid after 45 days)',
+    NY: 'New York Insurance Law Article 79 (§ 7903 — full refund inside free-look & 10% monthly statutory penalty on refunds delayed past 30 days)',
+    IL: 'Illinois Service Contract Act (215 ILCS 152/35 — mandatory free-look full refund & capped cancellation fee)',
+    WA: 'Washington RCW 48.110.070 (Service Contracts — 30-day full refund & 10% statutory penalty if unpaid within 30 days)',
+    OH: 'Ohio Revised Code § 3905.423 & Consumer Sales Practices Act',
+    GA: 'Georgia Code § 33-7-6 (Vehicle Service Agreements & Unfair Claims Statutes)',
+    NC: 'North Carolina Gen. Stat. § 58-1-25 & Motor Vehicle Service Agreement Rules',
+    PA: 'Pennsylvania Unfair Trade Practices & Consumer Protection Law (73 P.S. § 201-1 et seq.)',
+    AZ: 'Arizona Revised Statutes § 20-1095.06 (Service Company Cancellation & Refund Mandate)',
+    CO: 'Colorado Revised Statutes § 42-11-101 et seq. (Motor Vehicle Service Contract Insurance)',
+    NJ: 'New Jersey Service Contracts Act (N.J.S.A. 56:12-87 et seq.)',
+    VA: 'Virginia Extended Service Contract Act (Va. Code § 59.1-435 et seq.)',
+    MI: 'Michigan Consumer Protection Act & Motor Vehicle Installment Sales Contracts Act',
+    MA: 'Massachusetts Gen. Laws ch. 175, § 149M–149X (Service Contracts — 10% monthly late-refund penalty)',
+  };
+  return (
+    citations[stateCode.toUpperCase()] ||
+    `${stateName} Motor Vehicle Service Contract, Consumer Protection & Retail Installment Sales Statutes`
+  );
+}
+
 export function generateCancellationTemplates(
   input: AddOnRefundInput,
   estimate: AddOnRefundEstimate
@@ -956,19 +987,43 @@ export function generateCancellationTemplates(
   checklist: string[];
 } {
   const rule = STATE_AUTO_RULES[input.stateCode?.toUpperCase()] ?? STATE_AUTO_RULES.TX;
+  const stateStatute = getStateStatutoryCitation(rule.code, rule.name);
+
   const buyer = input.buyerName?.trim() || '[YOUR FULL NAME]';
-  const dealer = input.dealerName?.trim() || '[DEALERSHIP NAME]';
-  const rawAdmin = input.administratorName?.trim() || '';
-  const matchedAdmin = FI_ADMINISTRATORS.find(
-    (a) =>
-      a.id === rawAdmin.toLowerCase() ||
-      a.name.toLowerCase().includes(rawAdmin.toLowerCase()) ||
-      rawAdmin.toLowerCase().includes(a.id)
-  );
+  const buyerEmail = input.buyerEmail?.trim() || '[YOUR EMAIL]';
+  const buyerPhone = input.buyerPhone?.trim() || '[YOUR PHONE]';
+  const buyerAddress = input.buyerAddress?.trim() || `[YOUR MAILING ADDRESS, ${rule.code}]`;
+  const dealer = input.dealerName?.trim() || '[SELLING DEALERSHIP NAME]';
+
+  const rawAdminId = (input.administratorId || '').trim().toLowerCase();
+  const rawAdmin = (input.administratorName || '').trim();
+  const matchedAdmin =
+    rawAdminId === 'other'
+      ? undefined
+      : FI_ADMINISTRATORS.find(
+          (a) =>
+            (rawAdminId && a.id === rawAdminId) ||
+            (rawAdmin &&
+              (a.id === rawAdmin.toLowerCase() ||
+                a.name.toLowerCase().includes(rawAdmin.toLowerCase())))
+        );
+
   const admin = matchedAdmin ? matchedAdmin.name : rawAdmin || '[PLAN ADMINISTRATOR NAME]';
+  const customAddr = input.administratorAddress?.trim();
+  const customPhone = input.administratorPhone?.trim();
+
   const adminRoutingBlock = matchedAdmin
     ? `Direct Administrator Mailing Address: ${matchedAdmin.cancellationAddress}\nAdministrator Phone / Reference: ${matchedAdmin.contactHint}\nBypass Guidance: ${matchedAdmin.directBypassTip}`
-    : `Direct Administrator Routing: Mail/email to the Administrator Cancellations Dept. address printed on Page 1 or the Cancellation Clause of your VSC/GAP contract.`;
+    : [
+        `Direct Administrator Routing: ${
+          customAddr ||
+          'Send to the Administrator Cancellations Dept. address/email printed on Page 1 or the Cancellation Clause of your contract'
+        }`,
+        customPhone ? `Administrator Phone / Fax: ${customPhone}` : null,
+      ]
+        .filter(Boolean)
+        .join('\n');
+
   const lender = input.lenderName?.trim() || '[AUTO LENDER / LIENHOLDER NAME]';
   const vehicle = input.vehicleYmm?.trim() || '[YEAR MAKE MODEL]';
   const vin = input.vin?.trim() || '[17-DIGIT VIN]';
@@ -989,10 +1044,10 @@ export function generateCancellationTemplates(
     .join('\n');
 
   const refundDestination = input.financedInLoan
-    ? `Because these products were financed, please remit the refund directly to my lienholder (${lender}) to be applied to my loan principal balance, and send written confirmation of the refund amount and check/EFT date to my email and mailing address.`
-    : `Because these products were paid in cash / not financed, please issue the refund check directly to me at my address below.`;
+    ? `Because these products were financed, please remit the refund directly to my lienholder (${lender}) to be applied to my loan principal balance, and send written confirmation of the refund amount and check/EFT date to my email and mailing address below.`
+    : `Because these products were paid in cash / not financed, please issue the refund check directly to me at my mailing address below.`;
 
-  const cancellationSubject = `FORMAL NOTICE OF CANCELLATION & REFUND REQUEST — VIN: ${vin} (Contract #${contractNo})`;
+  const cancellationSubject = `FORMAL NOTICE OF CANCELLATION & REFUND REQUEST (${rule.code}) — ${admin} — VIN: ${vin} (Contract #${contractNo})`;
   const cancellationLetter = `Date: ${todayStr}
 
 TO: ${admin} (Cancellations Department)
@@ -1001,6 +1056,7 @@ CC: Finance & Insurance Director, ${dealer}
 CC: ${input.financedInLoan ? `Lienholder / Loan Servicing, ${lender}` : 'Buyer Personal Records'}
 
 RE: Immediate Written Cancellation of Optional F&I Ancillary Contract(s)
+State of Purchase & Governing Law: ${rule.name} (${rule.code}) — ${stateStatute}
 Buyer Name: ${buyer}
 Vehicle: ${vehicle}
 VIN: ${vin}
@@ -1008,9 +1064,9 @@ Purchase Date: ${input.purchaseDateIso || '[PURCHASE DATE]'}
 Contract / Agreement Number(s): ${contractNo}
 Current Odometer Reading (as of ${todayStr}): ${Number(input.currentMileage || 0).toLocaleString()} miles
 
-Dear Cancellations Department & F&I Director,
+Dear ${admin} Cancellations Department & ${dealer} F&I Director,
 
-Please accept this signed letter as my formal written notice to immediately cancel the following optional ancillary product(s) purchased on ${
+Pursuant to my contract cancellation provisions and ${stateStatute}, please accept this signed letter as my formal written notice to immediately cancel the following optional ancillary product(s) purchased in ${rule.name} on ${
     input.purchaseDateIso || '[PURCHASE DATE]'
   }:
 
@@ -1018,52 +1074,54 @@ ${itemListText}
 
 ${
   estimate.withinFreeLook
-    ? `This request is submitted within ${rule.name}'s ${rule.vscFreeLookDays}-day free-look period (${estimate.daysSincePurchase} days since purchase) with zero claims filed. Accordingly, I am requesting a 100% full refund with zero cancellation fee.`
+    ? `This written cancellation notice is submitted within ${rule.name}'s ${rule.vscFreeLookDays}-day free-look period (${estimate.daysSincePurchase} days since purchase) with zero claims filed. Under ${rule.name} law and contract terms, I am entitled to a 100% full refund with zero cancellation fee.`
     : `I am requesting the full unearned prorated refund calculated from the date of this written notice (${todayStr}) and the attested odometer reading above, subject to no more than ${rule.name}'s statutory administrative fee cap ($${rule.vscMaxAdminFeeUsd}).`
 }
 
 ${refundDestination}
 
-Please note that per my contract terms, written notice establishes my effective cancellation date. I do not need to appear in person at the dealership to finalize this cancellation. Please reply in writing within 5 business days confirming receipt and the exact refund calculation.
+Per contract terms and ${rule.name} consumer protection standards, this signed written notice establishes my effective cancellation date — an in-person dealership visit is not required. Please reply in writing within 5 business days confirming receipt and the exact refund calculation, and ensure timely remittance within ${rule.name}'s statutory window.
 
 Sincerely,
 
 ______________________________
 ${buyer}
-Email: [YOUR EMAIL]
-Phone: [YOUR PHONE]
-Address: [YOUR MAILING ADDRESS]
+Email: ${buyerEmail}
+Phone: ${buyerPhone}
+Address: ${buyerAddress}
 
 Attachments Included:
 - Timestamped photo of current dashboard odometer (${Number(input.currentMileage || 0).toLocaleString()} miles)
 - Copy of Contract Declaration / Retail Installment Page`;
 
-  const stallBusterSubject = `SECOND NOTICE — OVERDUE F&I CANCELLATION REFUND (ESCALATION NOTICE) — VIN: ${vin}`;
+  const stallBusterSubject = `SECOND NOTICE — OVERDUE ${rule.name.toUpperCase()} F&I CANCELLATION REFUND (ESCALATION NOTICE) — VIN: ${vin}`;
   const stallBusterLetter = `Date: [DATE — 15 DAYS AFTER FIRST NOTICE]
 
 TO: General Manager & F&I Director, ${dealer}
 CC: Cancellations Department, ${admin}
 
-RE: Unprocessed Written Cancellation Notice Originally Sent on ${todayStr}
+RE: Unprocessed Written Cancellation Notice Originally Sent on ${todayStr} (${rule.name})
+Governing Statute: ${stateStatute}
 VIN: ${vin} | Contract #: ${contractNo}
 
 Dear General Manager,
 
-On ${todayStr}, I submitted a signed written request (with odometer verification) to cancel my optional F&I add-on contract(s) totaling $${estimate.totalAddOnsPaidUsd.toLocaleString()} (estimated refund ~$${estimate.estimatedPrincipalRefundUsd.toLocaleString()}).
+On ${todayStr}, I submitted a signed written request (with odometer verification) to cancel my optional F&I add-on contract(s) with ${admin} totaling $${estimate.totalAddOnsPaidUsd.toLocaleString()} (estimated refund ~$${estimate.estimatedPrincipalRefundUsd.toLocaleString()}).
 
 To date, I have not received written confirmation of cancellation processing or refund remittance to ${
     input.financedInLoan ? lender : 'my address'
-  }. Under ${rule.name} consumer protection and service contract statutes, optional ancillary cancellations must be honored promptly upon written request without requiring an in-person dealership visit.
+  }. Under ${stateStatute}, optional ancillary cancellations must be honored promptly upon written request without requiring an in-person dealership visit, and delayed refunds may trigger statutory interest/penalties.
 
 Please provide written confirmation of the refund check/EFT reference number within 5 business days. If this remains unresolved, I will submit a formal complaint with attached documentation to:
 1. The Consumer Financial Protection Bureau (CFPB)
-2. The ${rule.name} Department of Insurance (Service Contract Regulator)
+2. The ${rule.name} Department of Insurance / Service Contract Regulator
 3. The ${rule.name} Attorney General's Consumer Protection Division
 
 I would prefer to resolve this smoothly and directly with your office this week.
 
 Sincerely,
-${buyer}`;
+${buyer}
+${buyerEmail} | ${buyerPhone}`;
 
   const lenderCheckScript = `Hi ${lender} Servicing Team — I recently cancelled optional dealership add-ons (VSC/GAP) on Auto Loan #[LOAN #] for VIN ${vin}. An estimated refund of ~$${estimate.estimatedPrincipalRefundUsd.toLocaleString()} is being remitted by ${admin} / ${dealer}. Please confirm once received that 100% of this refund has been applied directly to my principal balance (not just advancing future payment dates) and send an updated payoff statement.`;
 

@@ -281,6 +281,52 @@ async function runTests() {
   assert.equal(FI_ADMINISTRATORS.length, 20);
   assert.ok(templates.cancellationLetter.includes('1HGCV1F30RA000001'));
   assert.ok(templates.cancellationLetter.includes('Deerfield Beach, FL'));
+  assert.ok(templates.cancellationLetter.includes('Texas Occupations Code Chapter 1304'));
+
+  // Test Honda Care selection + California statutory citation + Custom "Other" provider mode
+  const caTemplates = generateCancellationTemplates(
+    {
+      purchaseDateIso: '2026-11-05',
+      stateCode: 'CA',
+      financedInLoan: true,
+      loanAprPct: 8.5,
+      loanTermMonths: 60,
+      purchaseMileage: 25,
+      currentMileage: 400,
+      claimsFiled: false,
+      items: [{ type: 'vsc', label: 'Extended Warranty', costUsd: 2995, contractTermMonths: 60 }],
+      administratorId: 'honda-care',
+      buyerEmail: 'john@example.com',
+      vin: '2HGFE2F50RH123456',
+    },
+    freeLook
+  );
+  assert.ok(caTemplates.cancellationLetter.includes('American Honda Finance / Honda Care'));
+  assert.ok(caTemplates.cancellationLetter.includes('Torrance, CA'));
+  assert.ok(caTemplates.cancellationLetter.includes('California Civil Code § 1794.41'));
+  assert.ok(caTemplates.cancellationLetter.includes('john@example.com'));
+
+  const otherTemplates = generateCancellationTemplates(
+    {
+      purchaseDateIso: '2026-11-05',
+      stateCode: 'FL',
+      financedInLoan: false,
+      loanAprPct: 0,
+      loanTermMonths: 60,
+      purchaseMileage: 10,
+      currentMileage: 200,
+      claimsFiled: false,
+      items: [{ type: 'gap', label: 'GAP', costUsd: 995, contractTermMonths: 60 }],
+      administratorId: 'other',
+      administratorName: 'Vanguard Dealer Services',
+      administratorAddress: 'P.O. Box 999, Miami, FL 33101',
+      administratorPhone: '1-800-555-0199',
+    },
+    freeLook
+  );
+  assert.ok(otherTemplates.cancellationLetter.includes('Vanguard Dealer Services'));
+  assert.ok(otherTemplates.cancellationLetter.includes('P.O. Box 999, Miami, FL 33101'));
+  assert.ok(otherTemplates.cancellationLetter.includes('Florida Statutes § 634.121'));
 
   const oos = calculateOutOfStateSavings({
     homeStateCode: 'FL',

@@ -2,13 +2,16 @@ import React, { useMemo, useState } from 'react';
 import {
   ArrowUp,
   Building2,
+  CheckCircle2,
   ExternalLink,
   Gavel,
   HelpCircle,
   Lock,
+  MapPin,
+  PenLine,
   Scale,
   Search,
-  CheckCircle2,
+  X,
 } from 'lucide-react';
 import type { PublicAuditResponse } from '../shared/types';
 import { AuditWorkspace } from './AuditWorkspace';
@@ -27,12 +30,15 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
     return d.toISOString().slice(0, 10);
   }, []);
 
-  // Prominent Warranty / GAP Provider Search & Selection
+  // Step 1: Synced Warranty / GAP Provider Search + Rich "Other" Custom Option
   const [providerQuery, setProviderQuery] = useState('');
   const [selectedAdminId, setSelectedAdminId] = useState('fidelity-jma');
   const [customAdminName, setCustomAdminName] = useState('');
+  const [customAdminAddress, setCustomAdminAddress] = useState('');
+  const [customAdminPhone, setCustomAdminPhone] = useState('');
   const [showWhereToLook, setShowWhereToLook] = useState(false);
 
+  // Step 2: State + Loan + Add-Ons
   const [purchaseDate, setPurchaseDate] = useState(defaultDate);
   const [stateCode, setStateCode] = useState('TX');
   const [currentLoanBalanceUsd, setCurrentLoanBalanceUsd] = useState(40500);
@@ -53,7 +59,11 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
   const [maintOn, setMaintOn] = useState(false);
   const [maintCost, setMaintCost] = useState(1100);
 
+  // Step 3: Full Buyer & Contract Info Injected Into Letters
   const [buyerName, setBuyerName] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
+  const [buyerPhone, setBuyerPhone] = useState('');
+  const [buyerAddress, setBuyerAddress] = useState('');
   const [dealerName, setDealerName] = useState('');
   const [lenderName, setLenderName] = useState('');
   const [vehicleYmm, setVehicleYmm] = useState('');
@@ -71,23 +81,59 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
   const [adminSearch, setAdminSearch] = useState('');
 
   const allAdmins = refData?.administrators || [];
+  const allStates = refData?.states || [];
+
+  const activeStateRule = useMemo(
+    () => allStates.find((s: any) => s.code === stateCode) ?? null,
+    [allStates, stateCode]
+  );
 
   const matchingProviders = useMemo(() => {
-    if (!providerQuery.trim()) return allAdmins.slice(0, 8);
-    const q = providerQuery.toLowerCase();
+    if (!providerQuery.trim()) return allAdmins;
+    const q = providerQuery.toLowerCase().trim();
     return allAdmins.filter(
-      (a: any) => a.name.toLowerCase().includes(q) || a.products.toLowerCase().includes(q)
+      (a: any) =>
+        a.name.toLowerCase().includes(q) ||
+        a.products.toLowerCase().includes(q) ||
+        a.id.toLowerCase().includes(q)
     );
   }, [allAdmins, providerQuery]);
 
+  // Live synced search handler: typing "Honda" IMMEDIATELY switches selectedAdminId to Honda Care!
+  // If zero providers match what they typed, automatically switches to "other" and pre-fills their query!
+  const handleProviderSearch = (rawVal: string) => {
+    setProviderQuery(rawVal);
+    const q = rawVal.toLowerCase().trim();
+    if (!q) return;
+
+    const matches = allAdmins.filter(
+      (a: any) =>
+        a.name.toLowerCase().includes(q) ||
+        a.products.toLowerCase().includes(q) ||
+        a.id.toLowerCase().includes(q)
+    );
+
+    if (matches.length > 0) {
+      const stillInMatches = matches.some((m: any) => m.id === selectedAdminId);
+      if (!stillInMatches) {
+        setSelectedAdminId(matches[0].id);
+      }
+    } else {
+      setSelectedAdminId('other');
+      if (!customAdminName.trim()) {
+        setCustomAdminName(rawVal.trim());
+      }
+    }
+  };
+
   const activeProvider = useMemo(
-    () => allAdmins.find((a: any) => a.id === selectedAdminId) ?? null,
+    () => (selectedAdminId === 'other' ? null : allAdmins.find((a: any) => a.id === selectedAdminId) ?? null),
     [allAdmins, selectedAdminId]
   );
 
   const resolvedAdminName =
     selectedAdminId === 'other'
-      ? customAdminName.trim() || 'Plan Administrator Listed on Contract'
+      ? customAdminName.trim() || 'Custom Warranty / GAP Administrator'
       : activeProvider?.name || 'Fidelity Warranty Services / JM&A Group';
 
   const filteredAddons = useMemo(() => {
@@ -137,8 +183,14 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
           claimsFiled,
           items,
           buyerName,
+          buyerEmail,
+          buyerPhone,
+          buyerAddress,
           dealerName,
+          administratorId: selectedAdminId,
           administratorName: resolvedAdminName,
+          administratorAddress: selectedAdminId === 'other' ? customAdminAddress : undefined,
+          administratorPhone: selectedAdminId === 'other' ? customAdminPhone : undefined,
           lenderName,
           vehicleYmm,
           vin,
@@ -160,17 +212,17 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
           Pillar 2 • 2-Step Car Loan Rescue &amp; Warranty Cancellation Generator
         </span>
         <h1 className="font-display text-3xl font-extrabold text-[#082545] sm:text-4xl">
-          Search Your Extended Warranty / GAP Company &amp; Generate Your Cancellation Packet
+          Search Your Extended Warranty / GAP Company &amp; Generate Your State-Specific Cancellation Packet
         </h1>
         <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-          Dealership finance managers stall phone cancellations to protect their commission. Find the company housing your Extended Warranty or GAP contract below, calculate your exact free-look or prorated refund + LTV drop for free, and generate your ready-to-send direct cancellation letter &amp; PDF.
+          Dealership finance managers stall phone cancellations to protect their commission. Select your warranty or GAP company (or enter a custom provider), choose your purchase state so we cite your state's statutory refund rules, and generate your ready-to-sign cancellation packet.
         </p>
       </div>
 
       {/* MAIN WARRANTY PROVIDER SEARCH + REFUND & LETTER GENERATOR */}
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <form onSubmit={runRescue} className="space-y-6">
-          {/* PROMINENT STEP 1: SEARCH & SELECT EXTENDED WARRANTY / GAP COMPANY */}
+          {/* PROMINENT STEP 1: SYNCED EXTENDED WARRANTY / GAP COMPANY PICKER + RICH "OTHER" FORM */}
           <div className="rounded-2xl border-2 border-[#05A66B]/30 bg-[#FAF9F5] p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -178,21 +230,36 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
                   Step 1 • Identify Who Holds Your Warranty or GAP Contract
                 </span>
                 <h2 className="mt-0.5 text-lg font-extrabold text-[#082545]">
-                  Search Extended Warranty / GAP Administrator ({allAdmins.length || 20} Major US Providers)
+                  Search Extended Warranty / GAP Administrator ({allAdmins.length || 20} Major US Providers + Custom)
                 </h2>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowWhereToLook(!showWhereToLook)}
-                className="inline-flex items-center gap-1 text-xs font-bold text-[#05A66B] hover:underline"
-              >
-                <HelpCircle className="h-3.5 w-3.5" /> Where is this printed on my paperwork?
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedAdminId('other');
+                  }}
+                  className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-bold transition ${
+                    selectedAdminId === 'other'
+                      ? 'border-[#082545] bg-[#082545] text-white'
+                      : 'border-slate-300 bg-white text-[#082545] hover:border-[#05A66B]'
+                  }`}
+                >
+                  <PenLine className="h-3 w-3" /> Other / Enter Custom Provider
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowWhereToLook(!showWhereToLook)}
+                  className="inline-flex items-center gap-1 text-xs font-bold text-[#05A66B] hover:underline"
+                >
+                  <HelpCircle className="h-3.5 w-3.5" /> Where is this on my paperwork?
+                </button>
+              </div>
             </div>
 
             {showWhereToLook && (
               <div className="mt-3 rounded-xl border border-teal-200 bg-white p-3.5 text-xs leading-relaxed text-slate-700">
-                <strong className="text-[#082545]">Where to look (takes 30 seconds):</strong> Don't look at your dealership's logo — look at the separate <strong>Vehicle Service Contract (VSC)</strong> or <strong>GAP Addendum</strong> page in your finance folder. Check the top-left header or the very bottom fine print for <em>"Administered by..."</em> or <em>"Obligor:"</em> (common names: <strong>Fidelity, Safe-Guard, Ally, Zurich, Assurant, EasyCare, CNA National, Portfolio, Toyota TFS, Ford Protect, Honda Care</strong>). You can also upload your contract photo below and let our scanner read it for you!
+                <strong className="text-[#082545]">Where to look (takes 30 seconds):</strong> Look at your separate <strong>Vehicle Service Contract (VSC)</strong> or <strong>GAP Addendum</strong> page — NOT the dealership logo. Check the top header or bottom fine print for <em>"Administered by:"</em> or <em>"Obligor:"</em> (e.g., <strong>Honda Care, Fidelity, Safe-Guard, Ally, Zurich, Assurant, EasyCare, CNA National, Portfolio, Toyota TFS, Ford Protect</strong>). If yours is a regional or dealer-owned company, click <strong>Other / Enter Custom Provider</strong>!
               </div>
             )}
 
@@ -202,10 +269,20 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
                 <input
                   type="text"
                   value={providerQuery}
-                  onChange={(e) => setProviderQuery(e.target.value)}
-                  placeholder="Type Fidelity, Safe-Guard, Ally, Zurich, Toyota..."
-                  className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-3 text-xs font-medium text-[#082545] focus:border-[#05A66B] focus:outline-none"
+                  onChange={(e) => handleProviderSearch(e.target.value)}
+                  placeholder="Type Honda, Fidelity, Safe-Guard, Ally, Zurich..."
+                  className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-10 pr-8 text-xs font-medium text-[#082545] focus:border-[#05A66B] focus:outline-none"
                 />
+                {providerQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setProviderQuery('')}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-700"
+                    title="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
 
               <div className="md:col-span-7">
@@ -214,38 +291,84 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
                   onChange={(e) => setSelectedAdminId(e.target.value)}
                   className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs font-bold text-[#082545] focus:border-[#05A66B] focus:outline-none"
                 >
-                  {(providerQuery.trim() ? matchingProviders : allAdmins).map((a: any) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} — ({a.freeLookWindow})
-                    </option>
-                  ))}
-                  <option value="other">Other / Regional Dealer Reinsurance (Enter Name Below)</option>
+                  {(providerQuery.trim() && matchingProviders.length > 0 ? matchingProviders : allAdmins).map(
+                    (a: any) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} — ({a.freeLookWindow})
+                      </option>
+                    )
+                  )}
+                  <option value="other">Other / Not Listed — Fill In Custom Provider Info Below</option>
                 </select>
               </div>
             </div>
 
+            {/* Quick Clickable Match Pills when typing */}
+            {providerQuery.trim() && matchingProviders.length > 1 && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-slate-500">Matches:</span>
+                {matchingProviders.slice(0, 5).map((m: any) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setSelectedAdminId(m.id)}
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
+                      selectedAdminId === m.id
+                        ? 'bg-[#05A66B] text-white'
+                        : 'border border-slate-300 bg-white text-[#082545] hover:border-[#05A66B]'
+                    }`}
+                  >
+                    {m.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* ACTIVE SELECTION CARD OR RICH "OTHER" CUSTOM PROVIDER INPUTS */}
             {selectedAdminId === 'other' ? (
-              <div className="mt-3">
-                <TextField
-                  label="Enter Administrator / Warranty Company Name From Your Contract"
-                  value={customAdminName}
-                  onChange={setCustomAdminName}
-                  placeholder="e.g. Vanguard Dealer Services / National Auto Care"
-                />
+              <div className="mt-3 space-y-3 rounded-xl border border-amber-300 bg-white p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-[#082545]">
+                    Custom Warranty / GAP Company Details (Injected Directly Into Your Cancellation Letter)
+                  </span>
+                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold text-amber-900">
+                    CUSTOM PROVIDER MODE
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <TextField
+                    label="Warranty / GAP Company Name *"
+                    value={customAdminName}
+                    onChange={setCustomAdminName}
+                    placeholder="e.g. Vanguard Dealer Services"
+                  />
+                  <TextField
+                    label="Cancellations Address or Email (from contract)"
+                    value={customAdminAddress}
+                    onChange={setCustomAdminAddress}
+                    placeholder="e.g. P.O. Box 1234, Dallas, TX or cancel@..."
+                  />
+                  <TextField
+                    label="Provider Phone / Fax # (optional)"
+                    value={customAdminPhone}
+                    onChange={setCustomAdminPhone}
+                    placeholder="e.g. 1-800-555-0199"
+                  />
+                </div>
               </div>
             ) : (
               activeProvider && (
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50/70 px-4 py-3 text-xs">
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-emerald-300 bg-emerald-50/80 px-4 py-3 text-xs">
                   <div>
                     <div className="flex items-center gap-1.5 font-extrabold text-[#082545]">
                       <CheckCircle2 className="h-4 w-4 text-[#05A66B]" />
-                      {activeProvider.name}
+                      Selected Provider: {activeProvider.name}
                     </div>
                     <div className="mt-0.5 text-[11px] text-slate-600">
                       Covers: {activeProvider.products} • <strong>{activeProvider.freeLookWindow}</strong>
                     </div>
                   </div>
-                  <span className="inline-flex items-center gap-1 rounded-lg bg-white px-2.5 py-1 font-mono text-[10.5px] font-bold text-[#082545] border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 rounded-lg border border-emerald-200 bg-white px-2.5 py-1 font-mono text-[10.5px] font-bold text-[#082545]">
                     <Lock className="h-3 w-3 text-[#05A66B]" /> Direct Bypass Address &amp; Letter Ready
                   </span>
                 </div>
@@ -253,10 +376,10 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
             )}
           </div>
 
-          {/* STEP 2: LOAN & ADD-ON REFUND NUMBERS */}
+          {/* STEP 2: STATE + LOAN + ADD-ON REFUND NUMBERS */}
           <div>
             <div className="mb-3 font-mono text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Step 2 • Enter Loan &amp; Add-On Details (Free Refund &amp; LTV Calculation)
+              Step 2 • State of Purchase, Loan &amp; Add-On Details (Applies State Statutory Law)
             </div>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
@@ -269,13 +392,13 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
                 />
               </label>
               <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
-                State Purchased
+                State Purchased (Cited in Letter)
                 <select
                   value={stateCode}
                   onChange={(e) => setStateCode(e.target.value)}
-                  className="rounded-xl border border-slate-300 bg-[#FAF9F5] px-3 py-2 text-sm text-[#082545]"
+                  className="rounded-xl border border-slate-300 bg-[#FAF9F5] px-3 py-2 text-sm font-bold text-[#082545]"
                 >
-                  {(refData?.states || []).map((s: any) => (
+                  {allStates.map((s: any) => (
                     <option key={s.code} value={s.code}>
                       {s.code} — {s.name}
                     </option>
@@ -289,6 +412,16 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
               <NumField label="Original Loan Term (mos)" value={loanTermMonths} onChange={setLoanTermMonths} />
               <NumField label="Current Odometer (mi)" value={currentMileage} onChange={setCurrentMileage} />
             </div>
+
+            {activeStateRule && (
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-[#FAF9F5] px-3.5 py-2.5 text-xs text-slate-700">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-[#05A66B]" />
+                <span>
+                  <strong>{activeStateRule.name} ({activeStateRule.code}) Statutory Rules Applied to Letter:</strong>{' '}
+                  {activeStateRule.vscFreeLookDays}-day full-refund benchmark • ${activeStateRule.vscMaxAdminFeeUsd} max cancellation fee cap • Escalation cites {activeStateRule.name} Dept. of Insurance &amp; {activeStateRule.name} Attorney General.
+                </span>
+              </div>
+            )}
           </div>
 
           <div>
@@ -313,13 +446,16 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
             </div>
           </div>
 
-          {/* STEP 3: BUYER / CONTRACT DETAILS FOR LETTER GENERATION */}
+          {/* STEP 3: FULL BUYER & CONTRACT DETAILS INJECTED INTO LETTER */}
           <div className="rounded-xl border border-slate-200 bg-[#FAF9F5] p-4">
             <div className="mb-2.5 text-xs font-extrabold text-[#082545]">
-              Step 3 • Contract Details to Inject Into Your Generated Letter &amp; PDF (Optional Before Preview)
+              Step 3 • Your Info &amp; Contract Details (Pre-Fills Your Sign-Ready Letter &amp; PDF)
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <TextField label="Your Full Name" value={buyerName} onChange={setBuyerName} placeholder="Jordan Taylor" />
+              <TextField label="Your Email" value={buyerEmail} onChange={setBuyerEmail} placeholder="jordan@email.com" />
+              <TextField label="Your Phone" value={buyerPhone} onChange={setBuyerPhone} placeholder="(555) 234-5678" />
+              <TextField label="Your Mailing Address" value={buyerAddress} onChange={setBuyerAddress} placeholder="123 Main St, Dallas, TX 75201" />
               <TextField label="Selling Dealership Name" value={dealerName} onChange={setDealerName} placeholder="Suncrest Motors" />
               <TextField label="Auto Lender / Lienholder" value={lenderName} onChange={setLenderName} placeholder="Capital One / Chase Auto" />
               <TextField label="Vehicle (Year Make Model)" value={vehicleYmm} onChange={setVehicleYmm} placeholder="2025 Honda CR-V Hybrid" />
@@ -334,8 +470,8 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
             className="w-full rounded-xl bg-[#05A66B] px-6 py-3.5 text-sm font-extrabold text-white shadow-md transition hover:bg-[#048A58] disabled:opacity-50"
           >
             {loading
-              ? 'Calculating Refund & Building Provider Cancellation Packet...'
-              : `Calculate My Refund & Generate ${resolvedAdminName} Cancellation Kit`}
+              ? 'Calculating Refund & Building State-Specific Cancellation Packet...'
+              : `Calculate My ${stateCode} Refund & Generate "${resolvedAdminName}" Cancellation Kit`}
           </button>
         </form>
 
@@ -348,7 +484,7 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
                   {rescue.unlockedRefiEligibility ? '★ REFINANCE ELIGIBILITY UNLOCKED' : '2-STEP LOAN RESCUE PLAN'}
                 </span>
                 <span className="font-mono text-xs text-slate-300">
-                  Provider: {resolvedAdminName}
+                  {activeStateRule?.name || stateCode} Law • {resolvedAdminName}
                 </span>
               </div>
               <p className="mt-3 text-sm font-semibold leading-relaxed text-slate-100">
@@ -386,12 +522,12 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
             <LockedGeneratorCard
               kit={kit}
               onKitUpdated={setKit}
-              headline={`Unlock Your ${resolvedAdminName} Direct Cancellation Letter, Routing Address & PDF`}
-              subheadline="Every generated cancellation letter, direct administrator Cancellations Dept. address, Day-14 Dealer Stall-Buster notice & lender verification script is pre-filled and ready to sign."
+              headline={`Unlock Your ${activeStateRule?.name || stateCode} Cancellation Letter for ${resolvedAdminName}`}
+              subheadline={`Pre-filled with ${activeStateRule?.name || stateCode} statutory refund protections, ${resolvedAdminName} Cancellations Dept. routing, Day-14 Dealer Stall-Buster escalation, and downloadable PDF.`}
               bullets={[
-                `Exact Cancellations Dept. mailing address & direct-bypass rules for ${resolvedAdminName}`,
-                'Pre-filled Formal Written Cancellation Notice (locks in your effective date & mileage)',
-                'Day-14 Dealer Stall-Buster Escalation Letter (citing CFPB, State Insurance Dept. & State AG)',
+                `Direct Cancellations Dept. routing & bypass rules for ${resolvedAdminName}`,
+                `Cites ${activeStateRule?.name || stateCode} service contract statutes (${activeStateRule?.vscFreeLookDays || 30}-day free-look / $${activeStateRule?.vscMaxAdminFeeUsd || 50} fee cap)`,
+                `Day-14 Stall-Buster Escalation Letter citing CFPB, ${activeStateRule?.name || stateCode} Dept. of Insurance & Attorney General`,
                 'Lender Principal-Application Verification Script + Downloadable Branded PDF Packet',
               ]}
               showCertifiedMailOption
@@ -422,7 +558,7 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
         }
       />
 
-      {/* SEARCHABLE 20-PROVIDER DIRECTORY (SELECT & GENERATE LETTER -> NO FREE BYPASS LEAK!) */}
+      {/* SEARCHABLE 20-PROVIDER DIRECTORY */}
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-7">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -462,6 +598,7 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
                 <button
                   type="button"
                   onClick={() => {
+                    setProviderQuery('');
                     setSelectedAdminId(adm.id);
                     document
                       .getElementById('rescue-generator-top')
@@ -469,7 +606,7 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
                   }}
                   className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#082545] px-3 py-2 text-[11px] font-bold text-white hover:bg-[#05A66B]"
                 >
-                  <ArrowUp className="h-3 w-3" /> Generate Letter
+                  <ArrowUp className="h-3 w-3" /> Select &amp; Generate
                 </button>
               </div>
             ))}
