@@ -677,10 +677,10 @@ const ShowcaseHomePage: React.FC<{ navigate: (path: string) => void }> = ({ navi
             </div>
 
             {/* Two-Tone Display Headline matching mockup */}
-            <h1 className="font-display mt-5 text-4xl font-extrabold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.55rem]">
-              Every Hated Car-Ownership Chore —
-              <span className="mt-1 block bg-gradient-to-r from-[#2DD4BF] via-[#34D399] to-[#38BDF8] bg-clip-text text-transparent">
-                Solved From Home
+            <h1 className="font-display mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.4rem]">
+              <span>Every Hated Car-Ownership Chore</span>
+              <span className="mt-1.5 block bg-gradient-to-r from-[#2DD4BF] via-[#34D399] to-[#38BDF8] bg-clip-text text-transparent">
+                — Solved From Home
               </span>
             </h1>
 
