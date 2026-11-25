@@ -238,6 +238,35 @@ export class AuditDatabase {
       };
     });
 
+    const partnerRows = this.db
+      .prepare(
+        `SELECT metadata_json FROM funnel_events WHERE event_name = 'partner_click'`
+      )
+      .all() as Array<{ metadata_json: string | null }>;
+
+    const partnerMap = new Map<string, { clicks: number; projectedRevenueUsd: number }>();
+    let partnerClicksTotal = 0;
+    let projectedAffiliateRevenueUsd = 0;
+    for (const row of partnerRows) {
+      try {
+        const meta = row.metadata_json ? JSON.parse(row.metadata_json) : {};
+        const pid = String(meta.partnerId || 'unknown');
+        const epc = Number(meta.estimatedEpcUsd) || 3.0;
+        partnerClicksTotal += 1;
+        projectedAffiliateRevenueUsd += epc;
+        const prev = partnerMap.get(pid) || { clicks: 0, projectedRevenueUsd: 0 };
+        prev.clicks += 1;
+        prev.projectedRevenueUsd = Math.round((prev.projectedRevenueUsd + epc) * 100) / 100;
+        partnerMap.set(pid, prev);
+      } catch {
+        // ignore malformed metadata
+      }
+    }
+
+    const byPartner = [...partnerMap.entries()]
+      .map(([partnerId, stats]) => ({ partnerId, ...stats }))
+      .sort((a, b) => b.clicks - a.clicks);
+
     const recentEvents = this.db
       .prepare(
         `SELECT id, created_utc, event_name, vertical, audit_id
@@ -255,6 +284,10 @@ export class AuditDatabase {
       conversionRatePct: totalAudits > 0 ? Number(((totalUnlocked / totalAudits) * 100).toFixed(1)) : 0,
       totalEstimatedSavingsFlaggedUsd: Math.round(totals.totalSavings ?? 0),
       waitlistCount: waitlistRow.cnt ?? 0,
+      partnerClicksTotal,
+      projectedAffiliateRevenueUsd: Math.round(projectedAffiliateRevenueUsd * 100) / 100,
+      projectedDirectRevenueUsd: totalUnlocked * 29,
+      byPartner,
       byVertical,
       recentEvents,
     };

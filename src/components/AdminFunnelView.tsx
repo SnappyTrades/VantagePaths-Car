@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, Cpu, DollarSign, RefreshCw, TrendingUp, Users } from 'lucide-react';
+import { Activity, ArrowUpRight, Bell, Cpu, DollarSign, RefreshCw, TrendingUp } from 'lucide-react';
 import type { AnalyticsSummaryResponse, LlmPoolStatusResponse } from '../shared/types';
 
 export const AdminFunnelView: React.FC = () => {
@@ -25,95 +25,103 @@ export const AdminFunnelView: React.FC = () => {
     load();
   }, []);
 
+  const combinedProjectedRev = summary
+    ? Math.round((summary.projectedDirectRevenueUsd + summary.projectedAffiliateRevenueUsd) * 100) / 100
+    : 0;
+
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <span className="text-xs font-semibold uppercase tracking-widest text-emerald-400">
-            VantagePaths Telemetry
+          <span className="font-mono text-xs font-bold uppercase tracking-widest text-[#0F766E]">
+            Day-1 Dual Revenue Telemetry
           </span>
-          <h1 className="text-2xl font-bold text-white">Live Revenue & Conversion Funnel</h1>
-          <p className="text-sm text-slate-400">
-            Compare conversion rates across Freight, Auto, and Home Bids to see which vertical prints revenue fastest.
+          <h1 className="font-serif-display text-3xl font-bold text-[#0B1528]">
+            Direct Pass Sales + Partner Affiliate Revenue Dashboard
+          </h1>
+          <p className="text-xs text-slate-600">
+            Tracks BOTH visitors who buy the $29 Pass AND free visitors who click high-CPA Auto Refi, Pre-Approval, Insurance &amp; Cash-Offer links.
           </p>
         </div>
         <button
           onClick={load}
-          className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-[#0B1528] hover:bg-slate-50"
         >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh Live Data
         </button>
       </div>
 
       {summary && (
         <>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <KpiCard icon={<Activity className="h-4 w-4 text-sky-400" />} label="Total Audits Run" value={String(summary.totalAudits)} />
-            <KpiCard icon={<DollarSign className="h-4 w-4 text-emerald-400" />} label="Unlocked Reports" value={`${summary.totalUnlocked} (${summary.conversionRatePct}%)`} />
-            <KpiCard icon={<TrendingUp className="h-4 w-4 text-amber-400" />} label="Total Savings Flagged" value={`$${summary.totalEstimatedSavingsFlaggedUsd.toLocaleString()}`} />
-            <KpiCard icon={<Users className="h-4 w-4 text-violet-400" />} label="Phase 2 Waitlist" value={String(summary.waitlistCount)} />
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-5">
+            <KpiCard icon={<DollarSign className="h-4 w-4 text-[#0F766E]" />} label="Est. Combined Revenue" value={`$${combinedProjectedRev.toLocaleString()}`} highlight />
+            <KpiCard icon={<Activity className="h-4 w-4 text-sky-600" />} label="Direct Pass Unlocks" value={`${summary.totalUnlocked} ($${summary.projectedDirectRevenueUsd})`} />
+            <KpiCard icon={<ArrowUpRight className="h-4 w-4 text-amber-600" />} label="Affiliate Partner Clicks" value={`${summary.partnerClicksTotal} (~$${summary.projectedAffiliateRevenueUsd})`} />
+            <KpiCard icon={<Bell className="h-4 w-4 text-violet-600" />} label="Renewal / Alert Subs" value={String(summary.waitlistCount)} />
+            <KpiCard icon={<TrendingUp className="h-4 w-4 text-emerald-600" />} label="Savings Flagged" value={`$${summary.totalEstimatedSavingsFlaggedUsd.toLocaleString()}`} />
           </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70">
-            <div className="border-b border-slate-800 px-5 py-3.5 text-sm font-semibold text-white">
-              Vertical Performance Comparison
+          {/* Affiliate Partner Click Breakdown */}
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
+            <div className="border-b border-slate-200 bg-[#FAF9F5] px-5 py-3.5 text-xs font-extrabold uppercase tracking-wider text-slate-600">
+              Revenue Layer 2: Outbound Partner / Affiliate Click Attribution (Earns Even Without $29 Purchase)
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-950/70 text-xs uppercase tracking-wider text-slate-400">
-                  <tr>
-                    <th className="px-5 py-3">Vertical</th>
-                    <th className="px-5 py-3">Audits</th>
-                    <th className="px-5 py-3">Checkout Clicks</th>
-                    <th className="px-5 py-3">Unlocks</th>
-                    <th className="px-5 py-3">PDF Downloads</th>
-                    <th className="px-5 py-3">Avg Savings Flagged</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800 text-slate-200">
-                  {summary.byVertical.map((row) => (
-                    <tr key={row.vertical} className="hover:bg-slate-800/40">
-                      <td className="px-5 py-3 font-semibold uppercase text-emerald-400">{row.vertical}</td>
-                      <td className="px-5 py-3 font-mono">{row.audits}</td>
-                      <td className="px-5 py-3 font-mono">{row.checkoutClicks}</td>
-                      <td className="px-5 py-3 font-mono font-bold text-white">{row.unlocked}</td>
-                      <td className="px-5 py-3 font-mono">{row.pdfDownloads}</td>
-                      <td className="px-5 py-3 font-mono text-amber-300">${row.avgSavingsUsd.toLocaleString()}</td>
+            {summary.byPartner.length === 0 ? (
+              <div className="p-5 text-xs text-slate-500">
+                No outbound partner clicks recorded yet — click any Pre-Approval, Auto Refi, Insurance, or Cash-Offer button across the 4 pillars to watch live attribution appear here.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs sm:text-sm">
+                  <thead className="bg-slate-50 text-[11px] uppercase text-slate-500">
+                    <tr>
+                      <th className="px-5 py-3">Partner Placement ID</th>
+                      <th className="px-5 py-3">Tracked Outbound Clicks</th>
+                      <th className="px-5 py-3">Projected EPC Value</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {summary.byPartner.map((p) => (
+                      <tr key={p.partnerId}>
+                        <td className="px-5 py-3 font-mono font-bold text-[#0F766E]">{p.partnerId}</td>
+                        <td className="px-5 py-3 font-mono font-bold text-[#0B1528]">{p.clicks}</td>
+                        <td className="px-5 py-3 font-mono font-bold text-emerald-700">${p.projectedRevenueUsd.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </>
       )}
 
       {llm && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-sm font-semibold text-white">
-              <Cpu className="h-4 w-4 text-emerald-400" /> $0 Free-Tier AI Failover Pool ({llm.readyCount}/{llm.configuredCount} Ready)
+            <h2 className="flex items-center gap-2 text-sm font-extrabold text-[#0B1528]">
+              <Cpu className="h-4 w-4 text-[#0F766E]" /> $0 Free-Tier Multimodal AI Failover Pool ({llm.readyCount}/{llm.configuredCount} Ready)
             </h2>
-            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 font-mono text-xs text-emerald-400">
-              Active: {llm.activeCandidateId || 'Deterministic Fallback'}
+            <span className="rounded-full bg-teal-50 px-2.5 py-1 font-mono text-xs font-bold text-[#0F766E]">
+              Active: {llm.activeCandidateId || 'Deterministic Engine'}
             </span>
           </div>
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
             {llm.candidates.map((c) => (
-              <div key={c.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
+              <div key={c.id} className="rounded-xl border border-slate-200 bg-[#FAF9F5] p-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-semibold text-white">{c.model}</span>
+                  <span className="font-mono text-xs font-bold text-[#0B1528]">{c.model}</span>
                   <span
                     className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                       c.state === 'READY'
-                        ? 'bg-emerald-500/15 text-emerald-400'
-                        : 'bg-amber-500/15 text-amber-400'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-amber-100 text-amber-800'
                     }`}
                   >
                     {c.state}
                   </span>
                 </div>
-                <div className="mt-1 text-[11px] text-slate-400">
+                <div className="mt-1 text-[11px] text-slate-500">
                   {c.provider} • {c.supportsVision ? 'PDF + Photo Vision' : 'Text Only'}
                 </div>
               </div>
@@ -123,20 +131,20 @@ export const AdminFunnelView: React.FC = () => {
       )}
 
       {summary && summary.recentEvents.length > 0 && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-          <h2 className="mb-3 text-sm font-semibold text-white">Recent Funnel Events</h2>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs">
+          <h2 className="mb-3 text-sm font-extrabold text-[#0B1528]">Recent Live Events</h2>
           <div className="space-y-1.5 font-mono text-xs">
             {summary.recentEvents.map((ev) => (
               <div
                 key={ev.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-950/70 px-3 py-2 text-slate-300"
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[#FAF9F5] px-3 py-2 text-slate-700"
               >
                 <span>
-                  <span className="text-emerald-400">{ev.event_name}</span> •{' '}
-                  <span className="uppercase text-sky-400">{ev.vertical}</span>
+                  <span className="font-bold text-[#0F766E]">{ev.event_name}</span> •{' '}
+                  <span className="uppercase text-slate-500">{ev.vertical}</span>
                   {ev.audit_id ? ` • ${ev.audit_id}` : ''}
                 </span>
-                <span className="text-slate-500">{new Date(ev.created_utc).toLocaleTimeString()}</span>
+                <span className="text-slate-400">{new Date(ev.created_utc).toLocaleTimeString()}</span>
               </div>
             ))}
           </div>
@@ -146,16 +154,21 @@ export const AdminFunnelView: React.FC = () => {
   );
 };
 
-const KpiCard: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({
+const KpiCard: React.FC<{ icon: React.ReactNode; label: string; value: string; highlight?: boolean }> = ({
   icon,
   label,
   value,
+  highlight = false,
 }) => (
-  <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-    <div className="flex items-center justify-between text-xs text-slate-400">
+  <div
+    className={`rounded-2xl border p-4 shadow-xs ${
+      highlight ? 'border-[#0F766E] bg-[#0B1528] text-white' : 'border-slate-200 bg-white text-[#0B1528]'
+    }`}
+  >
+    <div className={`flex items-center justify-between text-[11px] font-bold uppercase ${highlight ? 'text-teal-300' : 'text-slate-500'}`}>
       <span>{label}</span>
       {icon}
     </div>
-    <div className="mt-2 font-mono text-2xl font-bold text-white">{value}</div>
+    <div className="mt-2 font-mono text-xl font-extrabold">{value}</div>
   </div>
 );

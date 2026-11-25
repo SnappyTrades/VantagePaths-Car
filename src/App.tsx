@@ -5,579 +5,656 @@ import {
   Car,
   CheckCircle2,
   Compass,
-  FileSignature,
-  Hammer,
-  Home,
-  Mail,
+  DollarSign,
+  LifeBuoy,
+  MapPin,
+  Search,
+  Shield,
   ShieldCheck,
-  Truck,
+  Sparkles,
+  Tag,
 } from 'lucide-react';
-import type { AuditVerticalId, PublicAuditResponse } from './shared/types';
-import { AuditWorkspace } from './components/AuditWorkspace';
-import { AutoAdvantageHub } from './components/AutoAdvantageHub';
-import { FreeCalculators } from './components/FreeCalculators';
+import type { PublicAuditResponse } from './shared/types';
+import { BuyFromHomePage } from './components/BuyFromHomePage';
+import { LoanRescuePage } from './components/LoanRescuePage';
+import { InsuranceAuditPage, SellOrTradePage, StatesLawHubPage } from './components/InsuranceSellPages';
 import { AdminFunnelView } from './components/AdminFunnelView';
+import { PartnerCard } from './components/PartnerCard';
 
-type RoutePath = '/' | '/freight' | '/auto' | '/home-bids' | '/contracts' | '/housing' | '/admin';
-
-function normalizeRoute(pathname: string): RoutePath {
+function parseRoute(pathname: string): { view: string; stateCode: string | null } {
   const clean = pathname.replace(/\/+$/, '') || '/';
-  if (
-    clean === '/freight' ||
-    clean === '/auto' ||
-    clean === '/home-bids' ||
-    clean === '/contracts' ||
-    clean === '/housing' ||
-    clean === '/admin'
-  ) {
-    return clean;
+  if (clean.startsWith('/state/')) {
+    const code = clean.slice('/state/'.length).toUpperCase().slice(0, 2);
+    return { view: 'states', stateCode: code || null };
   }
-  return '/';
+  if (clean === '/buy' || clean === '/auto') return { view: 'buy', stateCode: null };
+  if (clean === '/rescue') return { view: 'rescue', stateCode: null };
+  if (clean === '/insurance') return { view: 'insurance', stateCode: null };
+  if (clean === '/sell') return { view: 'sell', stateCode: null };
+  if (clean === '/states') return { view: 'states', stateCode: null };
+  if (clean === '/admin') return { view: 'admin', stateCode: null };
+  return { view: 'home', stateCode: null };
 }
 
-const VERTICAL_META: Record<
-  AuditVerticalId,
-  {
-    name: string;
-    short: string;
-    tagline: string;
-    priceTag: string;
-    avgSavings: string;
-    icon: React.FC<{ className?: string }>;
-    accentText: string;
-    accentBorder: string;
-  }
-> = {
-  freight: {
-    name: 'Freight Invoice & Rate-Con Audit',
-    short: 'Freight',
-    tagline:
-      'Catch inflated fuel surcharges, unauthorized detention/accessorials, duplicate lumpers, and unprofitable broker loads in 30 seconds.',
-    priceTag: '$29 / 15-Audit Pack • $79/mo Pro',
-    avgSavings: 'Avg $480–$1,400 saved per dispute',
-    icon: Truck,
-    accentText: 'text-emerald-400',
-    accentBorder: 'border-emerald-500/40',
-  },
-  auto: {
-    name: 'Auto Deal, OTD & Lease Audit',
-    short: 'Auto Deals',
-    tagline:
-      'Expose hidden dealer add-ons, bogus doc/prep fees, APR reserve markups, and inflated lease money factors before you walk into F&I.',
-    priceTag: '$24 30-Day Buyer Pass • $79/mo Broker',
-    avgSavings: 'Avg $1,800–$4,500 saved per car',
-    icon: Car,
-    accentText: 'text-sky-400',
-    accentBorder: 'border-sky-500/40',
-  },
-  'home-bids': {
-    name: 'Contractor Bid & Storm Claim Audit',
-    short: 'Home Bids',
-    tagline:
-      'Audit roof, HVAC, solar, remodel quotes, and insurance Xactimate claims against fair regional pricing and mandatory IRC building codes.',
-    priceTag: '$29 Project Pass • $79/mo Property Pro',
-    avgSavings: 'Avg $2,200–$8,500 saved or recovered',
-    icon: Hammer,
-    accentText: 'text-amber-400',
-    accentBorder: 'border-amber-500/40',
-  },
-};
-
 export function App() {
-  const [route, setRoute] = useState<RoutePath>(() => normalizeRoute(window.location.pathname));
-  const [hubVertical, setHubVertical] = useState<AuditVerticalId>('freight');
+  const [loc, setLoc] = useState(() => parseRoute(window.location.pathname));
+  const [refData, setRefData] = useState<any>(null);
   const [verifiedAudit, setVerifiedAudit] = useState<PublicAuditResponse | null>(null);
   const [verifyBanner, setVerifyBanner] = useState<string | null>(null);
 
-  const navigate = (next: RoutePath) => {
-    if (next !== route) {
-      window.history.pushState({}, '', next);
-      setRoute(next);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+  const navigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    setLoc(parseRoute(path));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
-    const onPop = () => setRoute(normalizeRoute(window.location.pathname));
+    const onPop = () => setLoc(parseRoute(window.location.pathname));
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // Automatically verify Stripe Checkout return (?unlocked=1&session_id=...&audit_id=...)
+  useEffect(() => {
+    fetch('/api/auto/reference')
+      .then((r) => r.json())
+      .then(setRefData)
+      .catch(() => {});
+  }, []);
+
+  // Auto-verify Stripe return (?unlocked=1&session_id=...&audit_id=...)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const unlocked = params.get('unlocked');
     const sessionId = params.get('session_id');
     const auditId = params.get('audit_id');
-
     if (unlocked === '1' && sessionId && auditId) {
       fetch(
-        `/api/billing/verify?session_id=${encodeURIComponent(sessionId)}&audit_id=${encodeURIComponent(
-          auditId
-        )}`
+        `/api/billing/verify?session_id=${encodeURIComponent(sessionId)}&audit_id=${encodeURIComponent(auditId)}`
       )
         .then(async (r) => {
           const data = await r.json();
           if (!r.ok) throw new Error(data.error || 'Verification failed');
           setVerifiedAudit(data as PublicAuditResponse);
-          setVerifyBanner('Payment verified — your full audit report, counter-offer script & PDF are unlocked!');
+          setVerifyBanner('Payment verified — your full 60-Day VantagePaths Auto Pass & PDFs are unlocked!');
           window.history.replaceState({}, '', window.location.pathname);
         })
-        .catch((err) => {
-          setVerifyBanner(`Stripe verification notice: ${err.message}`);
-        });
-    } else if (auditId) {
-      fetch(`/api/audit/${encodeURIComponent(auditId)}`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (data) setVerifiedAudit(data as PublicAuditResponse);
-        })
-        .catch(() => {});
+        .catch((err) => setVerifyBanner(`Stripe verification notice: ${err.message}`));
     }
   }, []);
 
+  const states = refData?.states || [];
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* Unified Header Navigation */}
-      <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-950/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5">
-          <button
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2.5 text-left"
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-sky-500 text-slate-950 shadow-lg shadow-emerald-500/20">
+    <div className="min-h-screen bg-[#FAF9F5] text-[#0B1528]">
+      {/* Editorial Light Top Nav */}
+      <header className="sticky top-0 z-40 border-b border-slate-200/90 bg-[#FAF9F5]/95 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6">
+          <button onClick={() => navigate('/')} className="flex items-center gap-2.5 text-left">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#0B1528] to-[#0F766E] text-white shadow-sm">
               <Compass className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-base font-extrabold tracking-tight text-white">
-                Vantage<span className="text-emerald-400">Paths</span>
+              <div className="text-lg font-extrabold tracking-tight text-[#0B1528]">
+                Vantage<span className="text-[#0F766E]">Paths</span>
               </div>
-              <div className="text-[10px] font-medium uppercase tracking-widest text-slate-400">
-                Deal, Quote & Contract Audit Hub
+              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                Car Ownership Without the Hassle
               </div>
             </div>
           </button>
 
           <nav className="hidden items-center gap-1 md:flex">
-            <NavBtn active={route === '/'} onClick={() => navigate('/')}>
-              Hub
-            </NavBtn>
-            <NavBtn active={route === '/freight'} onClick={() => navigate('/freight')}>
-              Freight
-            </NavBtn>
-            <NavBtn active={route === '/auto'} onClick={() => navigate('/auto')}>
-              Auto Deals
-            </NavBtn>
-            <NavBtn active={route === '/home-bids'} onClick={() => navigate('/home-bids')}>
-              Home Bids
-            </NavBtn>
-            <NavBtn active={route === '/contracts'} onClick={() => navigate('/contracts')}>
-              Contracts
-            </NavBtn>
-            <NavBtn active={route === '/housing'} onClick={() => navigate('/housing')}>
-              Housing
-            </NavBtn>
+            <NavLink active={loc.view === 'home'} onClick={() => navigate('/')}>Overview</NavLink>
+            <NavLink active={loc.view === 'buy'} onClick={() => navigate('/buy')}>1. Buy From Home</NavLink>
+            <NavLink active={loc.view === 'rescue'} onClick={() => navigate('/rescue')}>2. Loan Rescue</NavLink>
+            <NavLink active={loc.view === 'insurance'} onClick={() => navigate('/insurance')}>3. Insurance</NavLink>
+            <NavLink active={loc.view === 'sell'} onClick={() => navigate('/sell')}>4. Sell / Trade</NavLink>
+            <NavLink active={loc.view === 'states'} onClick={() => navigate('/states')}>50 States</NavLink>
           </nav>
 
-          <button
-            onClick={() => navigate('/admin')}
-            className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition ${
-              route === '/admin'
-                ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300'
-                : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700 hover:text-white'
-            }`}
-          >
-            <BarChart3 className="h-3.5 w-3.5" /> Funnel
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/admin')}
+              className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition ${
+                loc.view === 'admin'
+                  ? 'border-[#0F766E] bg-teal-50 text-[#0F766E]'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              <BarChart3 className="h-3.5 w-3.5" /> Revenue
+            </button>
+            <button
+              onClick={() => navigate('/rescue')}
+              className="hidden rounded-xl bg-[#0B1528] px-3.5 py-2 text-xs font-bold text-white hover:bg-[#0F766E] sm:inline-flex"
+            >
+              Check Refund Free →
+            </button>
+          </div>
         </div>
 
-        {/* Mobile Nav Strip */}
-        <div className="flex items-center gap-1 overflow-x-auto border-t border-slate-900 px-4 py-2 md:hidden">
-          {(['/', '/freight', '/auto', '/home-bids', '/contracts', '/housing'] as RoutePath[]).map(
-            (r) => (
-              <NavBtn key={r} active={route === r} onClick={() => navigate(r)}>
-                {r === '/' ? 'Hub' : r.slice(1)}
-              </NavBtn>
-            )
-          )}
+        {/* Mobile Nav */}
+        <div className="flex items-center gap-1 overflow-x-auto border-t border-slate-200/70 px-4 py-2 md:hidden">
+          {[
+            ['/', 'Home'],
+            ['/buy', 'Buy'],
+            ['/rescue', 'Loan Rescue'],
+            ['/insurance', 'Insurance'],
+            ['/sell', 'Sell/Trade'],
+            ['/states', '50 States'],
+          ].map(([p, lbl]) => (
+            <button
+              key={p}
+              onClick={() => navigate(p)}
+              className="whitespace-nowrap rounded-lg bg-white px-3 py-1 text-xs font-bold text-[#0B1528] border border-slate-200"
+            >
+              {lbl}
+            </button>
+          ))}
         </div>
       </header>
 
       {verifyBanner && (
-        <div className="border-b border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-center text-xs font-medium text-emerald-300">
+        <div className="border-b border-teal-200 bg-teal-50 px-4 py-2.5 text-center text-xs font-bold text-[#0F766E]">
           {verifyBanner}
         </div>
       )}
 
-      {/* Route Views */}
-      {route === '/' && (
-        <HubHomePage
-          activeVertical={hubVertical}
-          setActiveVertical={setHubVertical}
-          navigate={navigate}
-          verifiedAudit={verifiedAudit}
-        />
+      {/* Views */}
+      {loc.view === 'home' && <EditorialHomePage navigate={navigate} states={states} />}
+      {loc.view === 'buy' && <BuyFromHomePage states={states} initialAudit={verifiedAudit} />}
+      {loc.view === 'rescue' && <LoanRescuePage refData={refData} initialAudit={verifiedAudit} />}
+      {loc.view === 'insurance' && <InsuranceAuditPage states={states} />}
+      {loc.view === 'sell' && <SellOrTradePage states={states} />}
+      {loc.view === 'states' && (
+        <StatesLawHubPage states={states} selectedCode={loc.stateCode} navigate={navigate} />
       )}
+      {loc.view === 'admin' && <AdminFunnelView />}
 
-      {(route === '/freight' || route === '/auto' || route === '/home-bids') && (
-        <DedicatedVerticalPage
-          vertical={route.slice(1) as AuditVerticalId}
-          initialAudit={verifiedAudit}
-          navigate={navigate}
-        />
-      )}
+      {/* Authoritative Editorial Footer + FTC Disclosure */}
+      <footer className="mt-16 border-t border-slate-200 bg-[#0B1528] py-12 text-slate-300">
+        <div className="mx-auto max-w-6xl space-y-6 px-4 sm:px-6">
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
+            <div>
+              <div className="text-lg font-extrabold text-white">
+                Vantage<span className="text-teal-400">Paths</span>.com
+              </div>
+              <p className="mt-1 max-w-xl text-xs leading-relaxed text-slate-400">
+                100% Independent Self-Service Car Ownership Platform — Buy From Home, Cancel Overpriced F&amp;I Add-Ons, Slash Auto Insurance Without Spam, and Exit for Max Cash.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-4 text-xs font-semibold">
+              <button onClick={() => navigate('/buy')} className="hover:text-teal-300">Buy From Home</button>
+              <button onClick={() => navigate('/rescue')} className="hover:text-teal-300">2-Step Loan Rescue</button>
+              <button onClick={() => navigate('/insurance')} className="hover:text-teal-300">Insurance Audit</button>
+              <button onClick={() => navigate('/sell')} className="hover:text-teal-300">Sell / Trade</button>
+              <button onClick={() => navigate('/states')} className="hover:text-teal-300">50-State Laws</button>
+            </div>
+          </div>
 
-      {(route === '/contracts' || route === '/housing') && (
-        <WaitlistVerticalPage vertical={route.slice(1) as 'contracts' | 'housing'} navigate={navigate} />
-      )}
-
-      {route === '/admin' && <AdminFunnelView />}
-
-      {/* Footer */}
-      <footer className="mt-16 border-t border-slate-900 bg-slate-950 py-8 text-center text-xs text-slate-500">
-        <div className="mx-auto max-w-6xl px-4">
-          <p className="font-semibold text-slate-400">
-            VantagePaths.com — See Every Hidden Fee, Overcharge & Trap Before You Sign or Pay.
-          </p>
-          <p className="mt-1.5">
-            Informational deal & invoice audit benchmarks powered by deterministic verifiers + $0 free-tier multimodal AI. Not legal, tax, or licensed adjusting advice.
-          </p>
+          <div className="border-t border-white/10 pt-5 text-[11px] leading-relaxed text-slate-400">
+            <strong>Self-Service &amp; Affiliate Transparency:</strong> VantagePaths provides independent calculators, official NHTSA lookups, 50-state statutory references, and user-sent templates. You review, sign, and submit all documents yourself — VantagePaths does not act as your legal representative, broker, or licensed insurance agent. To keep core calculators 100% free, VantagePaths earns revenue both from optional $29 Self-Service Passes and from disclosed partner referrals (auto refinance, pre-approval, auto insurance, cash offers, and mobile inspections) at $0 extra cost to you.
+          </div>
         </div>
       </footer>
     </div>
   );
 }
 
-const NavBtn: React.FC<{
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}> = ({ active, onClick, children }) => (
+const NavLink: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({
+  active,
+  onClick,
+  children,
+}) => (
   <button
     onClick={onClick}
-    className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition ${
-      active
-        ? 'bg-slate-800 text-emerald-400'
-        : 'text-slate-400 hover:bg-slate-900 hover:text-white'
+    className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+      active ? 'bg-teal-50 text-[#0F766E]' : 'text-slate-600 hover:bg-slate-100 hover:text-[#0B1528]'
     }`}
   >
     {children}
   </button>
 );
 
-const HubHomePage: React.FC<{
-  activeVertical: AuditVerticalId;
-  setActiveVertical: (v: AuditVerticalId) => void;
-  navigate: (r: RoutePath) => void;
-  verifiedAudit: PublicAuditResponse | null;
-}> = ({ activeVertical, setActiveVertical, navigate, verifiedAudit }) => {
-  return (
-    <main className="mx-auto max-w-6xl space-y-12 px-4 py-10">
-      {/* Hero */}
-      <section className="text-center">
-        <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-300">
-          <ShieldCheck className="h-3.5 w-3.5" /> 3 Live Audit Engines • Free Red-Flag Preview • Pay Only to Unlock Full Report
-        </div>
-        <h1 className="mx-auto mt-4 max-w-4xl text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
-          Audit Any High-Stakes Quote, Invoice, or Bid in{' '}
-          <span className="bg-gradient-to-r from-emerald-400 to-sky-400 bg-clip-text text-transparent">
-            30 Seconds
-          </span>
-        </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-slate-400 sm:text-base">
-          Upload a freight invoice, car dealership OTD worksheet, or contractor roof bid. VantagePaths flags hidden overcharges, compares fair US market benchmarks, and writes your word-for-word counter-offer email.
-        </p>
+const EditorialHomePage: React.FC<{ navigate: (path: string) => void; states: any[] }> = ({
+  navigate,
+  states,
+}) => {
+  // Interactive Hero Dual Widget (Loan Rescue Quick Check + Live VIN Quick Check)
+  const [heroTab, setHeroTab] = useState<'rescue' | 'vin'>('rescue');
+  const [chkVsc, setChkVsc] = useState(true);
+  const [chkGap, setChkGap] = useState(true);
+  const [chkTire, setChkTire] = useState(true);
+  const [quickVin, setQuickVin] = useState('2T3P1RFV0RW441234');
+  const [quickVinRes, setQuickVinRes] = useState<any>(null);
+  const [quickVinLoading, setQuickVinLoading] = useState(false);
 
-        {/* Quick Vertical Selector Pills */}
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
-          {(['freight', 'auto', 'home-bids'] as AuditVerticalId[]).map((v) => {
-            const meta = VERTICAL_META[v];
-            const Icon = meta.icon;
-            const active = activeVertical === v;
-            return (
-              <button
-                key={v}
-                onClick={() => setActiveVertical(v)}
-                className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
-                  active
-                    ? 'border-emerald-500 bg-emerald-500/15 text-white shadow-lg shadow-emerald-500/10'
-                    : 'border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-700'
-                }`}
-              >
-                <Icon className={`h-4 w-4 ${meta.accentText}`} />
-                {meta.short}
-                <span className="rounded-md bg-slate-950/70 px-1.5 py-0.5 font-mono text-[10px] text-emerald-400">
-                  LIVE
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+  const principalRefund = (chkVsc ? 3495 : 0) + (chkGap ? 1195 : 0) + (chkTire ? 895 : 0);
+  const interestSaved = Math.round(principalRefund * 0.285);
+  const totalRecover = principalRefund + interestSaved;
 
-      {/* Live Shared Audit Engine right on Homepage */}
-      <section>
-        <AuditWorkspace vertical={activeVertical} initialAudit={verifiedAudit} />
-      </section>
-
-      {/* 5 Vertical Paths Directory */}
-      <section className="space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-widest text-emerald-400">
-              The VantagePaths Ecosystem
-            </span>
-            <h2 className="text-2xl font-bold text-white">5 High-Value Audit Paths Under One Roof</h2>
-          </div>
-          <p className="text-xs text-slate-400">
-            Phase 1 (3 Verticals Live Today) • Phase 2 Waitlist Open
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          {(['freight', 'auto', 'home-bids'] as AuditVerticalId[]).map((v) => {
-            const m = VERTICAL_META[v];
-            const Icon = m.icon;
-            return (
-              <div
-                key={v}
-                className="flex flex-col justify-between rounded-2xl border border-slate-800 bg-slate-900/70 p-5 transition hover:border-emerald-500/40"
-              >
-                <div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-950 border border-slate-800">
-                      <Icon className={`h-5 w-5 ${m.accentText}`} />
-                    </div>
-                    <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold uppercase text-emerald-400">
-                      Phase 1 • Live
-                    </span>
-                  </div>
-                  <h3 className="mt-4 text-lg font-bold text-white">{m.name}</h3>
-                  <p className="mt-2 text-xs leading-relaxed text-slate-400">{m.tagline}</p>
-                </div>
-
-                <div className="mt-5 space-y-3 border-t border-slate-800 pt-4">
-                  <div className="text-xs font-semibold text-emerald-300">{m.avgSavings}</div>
-                  <div className="font-mono text-[11px] text-slate-400">{m.priceTag}</div>
-                  <button
-                    onClick={() => navigate(`/${v}` as RoutePath)}
-                    className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-slate-800 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 hover:text-slate-950"
-                  >
-                    Open {m.short} Workspace & Free Calculator <ArrowRight className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Phase 2 Cards */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <Phase2Card
-            icon={<FileSignature className="h-5 w-5 text-violet-400" />}
-            title="SMB Contract, SaaS & Vendor Bill Audit"
-            desc="Catch auto-renewal traps, uncapped liability clauses, and sneaky SaaS/telecom fee creep before your 60-day cancellation window closes."
-            price="$29/scan • $59/mo Business"
-            onClick={() => navigate('/contracts')}
-          />
-          <Phase2Card
-            icon={<Home className="h-5 w-5 text-cyan-400" />}
-            title="Housing Buy vs. Rent & Property Tax Protest"
-            desc="Run 5,000-path equity/interest simulations and generate county property tax protest evidence packets."
-            price="$39 Protest Packet • $49/mo Pro"
-            onClick={() => navigate('/housing')}
-          />
-        </div>
-      </section>
-    </main>
-  );
-};
-
-const Phase2Card: React.FC<{
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-  price: string;
-  onClick: () => void;
-}> = ({ icon, title, desc, price, onClick }) => (
-  <div className="flex flex-col justify-between rounded-2xl border border-slate-800/80 bg-slate-900/40 p-5 sm:flex-row sm:items-center sm:gap-5">
-    <div className="space-y-1.5">
-      <div className="flex items-center gap-2">
-        {icon}
-        <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-300">
-          Phase 2 • Early Access
-        </span>
-      </div>
-      <h3 className="text-base font-bold text-white">{title}</h3>
-      <p className="text-xs text-slate-400">{desc}</p>
-      <div className="font-mono text-[11px] text-slate-500">{price}</div>
-    </div>
-    <button
-      onClick={onClick}
-      className="mt-4 shrink-0 rounded-xl border border-slate-700 bg-slate-900 px-4 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-500/50 hover:text-white sm:mt-0"
-    >
-      Join Waitlist
-    </button>
-  </div>
-);
-
-const DedicatedVerticalPage: React.FC<{
-  vertical: AuditVerticalId;
-  initialAudit: PublicAuditResponse | null;
-  navigate: (r: RoutePath) => void;
-}> = ({ vertical, initialAudit, navigate }) => {
-  const meta = VERTICAL_META[vertical];
-  const Icon = meta.icon;
-
-  return (
-    <main className="mx-auto max-w-6xl space-y-8 px-4 py-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-3xl space-y-2">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900 px-3 py-1 text-xs font-semibold text-slate-300">
-            <Icon className={`h-3.5 w-3.5 ${meta.accentText}`} />
-            vantagepaths.com/{vertical}
-          </div>
-          <h1 className="text-3xl font-extrabold text-white">{meta.name}</h1>
-          <p className="text-sm text-slate-400">{meta.tagline}</p>
-        </div>
-        <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 text-right">
-          <div className="text-xs font-bold text-emerald-400">{meta.avgSavings}</div>
-          <div className="mt-0.5 font-mono text-[11px] text-slate-400">{meta.priceTag}</div>
-        </div>
-      </div>
-
-      {vertical === 'auto' ? (
-        <AutoAdvantageHub initialAudit={initialAudit} />
-      ) : (
-        <>
-          <AuditWorkspace vertical={vertical} initialAudit={initialAudit} />
-          <FreeCalculators vertical={vertical} />
-        </>
-      )}
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-        <div className="text-sm text-slate-300">
-          Need to audit a different document? Switch to another live VantagePaths workspace:
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(['freight', 'auto', 'home-bids'] as AuditVerticalId[])
-            .filter((v) => v !== vertical)
-            .map((v) => (
-              <button
-                key={v}
-                onClick={() => navigate(`/${v}` as RoutePath)}
-                className="rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs font-semibold text-slate-200 hover:border-emerald-500/50 hover:text-white"
-              >
-                {VERTICAL_META[v].short} Auditor →
-              </button>
-            ))}
-        </div>
-      </div>
-    </main>
-  );
-};
-
-const WaitlistVerticalPage: React.FC<{
-  vertical: 'contracts' | 'housing';
-  navigate: (r: RoutePath) => void;
-}> = ({ vertical, navigate }) => {
-  const [email, setEmail] = useState('');
-  const [notes, setNotes] = useState('');
-  const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const isContracts = vertical === 'contracts';
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setStatus(null);
-    const res = await fetch('/api/waitlist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, vertical, notes }),
-    });
-    const data = await res.json();
-    if (!res.ok) setError(data.error || 'Unable to join waitlist.');
-    else {
-      setStatus(data.message);
-      setEmail('');
-      setNotes('');
+  const runQuickVin = async () => {
+    setQuickVinLoading(true);
+    try {
+      const r = await fetch(`/api/auto/vin/${encodeURIComponent(quickVin.trim())}`);
+      if (r.ok) setQuickVinRes(await r.json());
+    } finally {
+      setQuickVinLoading(false);
     }
   };
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-12">
-      <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-7">
-        <span className="rounded-full bg-violet-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-violet-300">
-          Phase 2 Expansion • Early Access Waitlist
-        </span>
-        <h1 className="mt-3 text-3xl font-extrabold text-white">
-          {isContracts
-            ? 'SMB Contract, SaaS & Vendor Bill Audit'
-            : 'Housing Buy vs. Rent & Property Tax Protest'}
-        </h1>
-        <p className="mt-2 text-sm leading-relaxed text-slate-400">
-          {isContracts
-            ? 'We are launching Phase 2 for MSAs, commercial leases, SaaS auto-renewal traps, and vendor invoice audits once our Phase 1 Freight, Auto & Home Bid engines complete initial traction.'
-            : 'We are launching Phase 2 for 5,000-path housing equity/mortgage simulations and county property tax protest evidence packets.'}
-        </p>
+    <main>
+      {/* SPLIT EDITORIAL HERO */}
+      <section className="border-b border-slate-200/80 py-14 sm:py-16">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-12 px-4 sm:px-6 lg:grid-cols-12">
+          <div className="space-y-5 lg:col-span-6">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-200 bg-teal-50 px-3.5 py-1 text-xs font-bold text-[#0F766E]">
+              <ShieldCheck className="h-3.5 w-3.5" /> 100% Independent • 50-State Coverage • Zero Dealer Kickbacks
+            </span>
+            <h1 className="font-serif-display text-4xl font-bold leading-[1.08] tracking-tight text-[#0B1528] sm:text-5xl">
+              Do everything you <em className="text-[#0F766E]">hate</em> about owning a car — smarter, from your couch.
+            </h1>
+            <p className="text-base leading-relaxed text-slate-600">
+              Skip 4-hour dealership traps and insurance spam calls. VantagePaths gives you the exact tools to <strong>buy a car 95% online</strong>, <strong>cancel \$2k–\$5k in regretted warranties &amp; GAP</strong> to unlock refinancing, <strong>audit your insurance every 6 months</strong>, and <strong>sell for max cash</strong>.
+            </p>
 
-        <form onSubmit={submit} className="mt-6 space-y-3">
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@company.com"
-              className="flex-1 rounded-xl border border-slate-700 bg-slate-950 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
-            />
-            <button
-              type="submit"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-sm font-bold text-slate-950 hover:bg-emerald-400"
-            >
-              <Mail className="h-4 w-4" /> Reserve Early Access
-            </button>
-          </div>
-          <input
-            type="text"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Optional: What type of contract or property scenario do you want audited first?"
-            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-2 text-xs text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
-          />
-        </form>
+            <div className="flex flex-wrap gap-3 pt-1">
+              <button
+                onClick={() => navigate('/buy')}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#0F766E] px-5 py-3.5 text-sm font-extrabold text-white shadow-md shadow-teal-900/15 transition hover:bg-[#115E59]"
+              >
+                Buy a Car From Home <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => navigate('/rescue')}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3.5 text-sm font-extrabold text-[#0B1528] transition hover:border-[#0B1528]"
+              >
+                Already Bought? Cancel Add-Ons
+              </button>
+            </div>
 
-        {status && (
-          <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-xs text-emerald-300">
-            <CheckCircle2 className="h-4 w-4" /> {status}
+            <div className="flex flex-wrap gap-x-5 gap-y-2 border-t border-slate-200 pt-5 text-xs font-semibold text-slate-600">
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-[#0F766E]" /> Live US Gov NHTSA VIN Recalls</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-[#0F766E]" /> All 50 States + DC Fee Caps</span>
+              <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-[#0F766E]" /> Self-Service Letters &amp; PDFs</span>
+            </div>
           </div>
-        )}
-        {error && (
-          <div className="mt-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2.5 text-xs text-rose-300">
-            {error}
-          </div>
-        )}
 
-        <div className="mt-6 border-t border-slate-800 pt-4 text-xs text-slate-400">
-          Want to try our live engines right now?{' '}
-          <button onClick={() => navigate('/freight')} className="text-emerald-400 underline">
-            Freight
-          </button>
-          ,{' '}
-          <button onClick={() => navigate('/auto')} className="text-sky-400 underline">
-            Auto Deals
-          </button>
-          , or{' '}
-          <button onClick={() => navigate('/home-bids')} className="text-amber-400 underline">
-            Home Bids
-          </button>
-          .
+          {/* INTERACTIVE HERO WIDGET */}
+          <div className="lg:col-span-6">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
+              <div className="grid grid-cols-2 gap-1.5 bg-slate-100 p-1.5">
+                <button
+                  onClick={() => setHeroTab('rescue')}
+                  className={`rounded-xl py-2.5 text-xs font-extrabold transition ${
+                    heroTab === 'rescue' ? 'bg-white text-[#0B1528] shadow-xs' : 'text-slate-600'
+                  }`}
+                >
+                  2-Step Loan Rescue Check
+                </button>
+                <button
+                  onClick={() => setHeroTab('vin')}
+                  className={`rounded-xl py-2.5 text-xs font-extrabold transition ${
+                    heroTab === 'vin' ? 'bg-white text-[#0B1528] shadow-xs' : 'text-slate-600'
+                  }`}
+                >
+                  Free Live NHTSA VIN Check
+                </button>
+              </div>
+
+              {heroTab === 'rescue' ? (
+                <div className="space-y-3 p-6">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Toggle Optional Dealer Add-Ons (Sample: Financed @ 8.89% APR)
+                  </div>
+                  {[
+                    ['Extended Warranty (VSC)', '$3,495', '100% Optional • Cancellable for refund', chkVsc, setChkVsc],
+                    ['Dealer GAP Waiver', '$1,195', 'Replace with ~$250 insurer GAP', chkGap, setChkGap],
+                    ['Tire, Wheel & Key Bundle', '$895', 'High-commission F&I bundle', chkTire, setChkTire],
+                  ].map(([lbl, price, sub, val, setter]: any, idx) => (
+                    <label
+                      key={idx}
+                      className={`flex cursor-pointer items-center justify-between rounded-xl border p-3 transition ${
+                        val ? 'border-[#0F766E] bg-teal-50/60' : 'border-slate-200 bg-[#FAF9F5]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={val}
+                          onChange={(e) => setter(e.target.checked)}
+                          className="accent-[#0F766E]"
+                        />
+                        <div>
+                          <div className="text-xs font-extrabold text-[#0B1528]">{lbl}</div>
+                          <div className="text-[11px] text-slate-500">{sub}</div>
+                        </div>
+                      </div>
+                      <span className="font-mono text-sm font-bold text-[#0B1528]">{price}</span>
+                    </label>
+                  ))}
+
+                  <div className="rounded-xl bg-[#0B1528] p-4 text-white">
+                    <div className="flex items-baseline justify-between">
+                      <div>
+                        <div className="text-[10.5px] font-bold uppercase tracking-wider text-teal-300">
+                          Est. Add-On Refund + Interest Killed
+                        </div>
+                        <div className="text-[11px] text-slate-400">Also drops Loan-to-Value so you can refinance!</div>
+                      </div>
+                      <div className="font-mono text-3xl font-extrabold text-emerald-300">
+                        ${totalRecover.toLocaleString()}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate('/rescue')}
+                      className="mt-3 w-full rounded-lg bg-teal-400 py-2.5 text-xs font-extrabold text-[#042F2E] hover:bg-teal-300"
+                    >
+                      Open Full 2-Step Loan Rescue &amp; Cancellation Kit →
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 p-6">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    Official US Gov NHTSA Decoder (Free Instant Recall &amp; Complaint Check)
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      maxLength={17}
+                      value={quickVin}
+                      onChange={(e) => setQuickVin(e.target.value.toUpperCase())}
+                      className="flex-1 rounded-xl border border-slate-300 bg-[#FAF9F5] px-3 py-2 font-mono text-xs text-[#0B1528]"
+                    />
+                    <button
+                      type="button"
+                      disabled={quickVinLoading}
+                      onClick={runQuickVin}
+                      className="rounded-xl bg-[#0B1528] px-4 py-2 text-xs font-bold text-white hover:bg-[#0F766E]"
+                    >
+                      {quickVinLoading ? '...' : 'Decode'}
+                    </button>
+                  </div>
+                  {quickVinRes ? (
+                    <div className="space-y-2 rounded-xl border border-teal-200 bg-teal-50/50 p-4 text-xs">
+                      <div className="font-extrabold text-[#0B1528]">
+                        {quickVinRes.year} {quickVinRes.make} {quickVinRes.model} ({quickVinRes.trim})
+                      </div>
+                      <div className="font-mono text-[11px] text-[#0F766E]">
+                        {quickVinRes.recallCount} Recall(s) • {quickVinRes.complaintCount} NHTSA Complaints
+                      </div>
+                      <p className="text-slate-700">{quickVinRes.negotiationInsight}</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Click Decode on the sample RAV4 Hybrid VIN above (or paste any 17-digit VIN) to pull live federal recalls and defect hotspots.
+                    </p>
+                  )}
+                  <button
+                    onClick={() => navigate('/buy')}
+                    className="w-full rounded-xl bg-[#0F766E] py-2.5 text-xs font-extrabold text-white hover:bg-[#115E59]"
+                  >
+                    Launch Full Buy-From-Home Deal Room →
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* THE 4 PILLARS DIRECTORY */}
+      <section className="mx-auto max-w-6xl space-y-6 px-4 py-14 sm:px-6">
+        <div>
+          <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#0F766E]">
+            The 4-Pillar Advantage Platform
+          </span>
+          <h2 className="font-serif-display mt-1 text-3xl font-bold text-[#0B1528]">
+            Every Hated Car-Ownership Chore — Solved From Home
+          </h2>
+        </div>
+
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <PillarCard
+            icon={<Car className="h-5 w-5 text-[#0F766E]" />}
+            kicker="PILLAR 1 • BUY FROM HOME"
+            title="Couch-to-Keys Remote Deal Room"
+            desc="Live NHTSA VIN recalls, 5-dealer blind email bid-war scripts, side-by-side quote comparison board, out-of-state shipping math, 4-square BS-detector, and pre-delivery contract PDF audits."
+            cta="Open Buy-From-Home Room"
+            onClick={() => navigate('/buy')}
+          />
+          <PillarCard
+            icon={<LifeBuoy className="h-5 w-5 text-[#0F766E]" />}
+            kicker="PILLAR 2 • HIGHEST ROI"
+            title="2-Step Car Loan Rescue & Add-On Refunds"
+            desc="Cancel overpriced Extended Warranties, GAP & F&I bundles to slash loan principal & LTV, unlock credit union auto refinancing, and generate ready-to-sign Cancellation + Day-14 Stall-Buster PDFs."
+            cta="Run 2-Step Loan Rescue"
+            highlight
+            onClick={() => navigate('/rescue')}
+          />
+          <PillarCard
+            icon={<Shield className="h-5 w-5 text-[#0F766E]" />}
+            kicker="PILLAR 3 • EVERY 6 MONTHS"
+            title="Zero-Spam Auto Insurance Audit"
+            desc="Audit your Declarations Page for renewal loyalty penalties, deductible break-even math, and roadside CLUE traps — then export a 1-page Apples-to-Apples Quote Spec Sheet + set 6-month alerts."
+            cta="Audit My Insurance Policy"
+            onClick={() => navigate('/insurance')}
+          />
+          <PillarCard
+            icon={<Tag className="h-5 w-5 text-[#0F766E]" />}
+            kicker="PILLAR 4 • MAX-CASH EXIT"
+            title="Sell or Trade In Without Getting Lowballed"
+            desc="Compare dealer trade-in (+ exact state sales tax credit!) vs. online instant cash offers vs. private party sale, backed by a zero-scam bank-verified payment & DMV checklist."
+            cta="Optimize My Exit Path"
+            onClick={() => navigate('/sell')}
+          />
+        </div>
+      </section>
+
+      {/* TRANSPARENT DUAL-REVENUE SECTION (DAY-1 EARNINGS WHETHER USERS BUY OR NOT) */}
+      <section className="border-y border-slate-200 bg-white py-14">
+        <div className="mx-auto max-w-6xl space-y-8 px-4 sm:px-6">
+          <div className="max-w-3xl">
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#0F766E]">
+              Simple Pricing &amp; Transparent Revenue Model
+            </span>
+            <h2 className="font-serif-display mt-1 text-3xl font-bold text-[#0B1528]">
+              Free Tools Forever. Pay \$29 Only When You Want Ready-to-Send Packets.
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Whether a visitor uses our free calculators and compares an auto refi / insurance offer, OR unlocks the full 60-Day Self-Service Pass, VantagePaths stays 100% independent of dealership markups.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+            <PriceTier
+              badge="FREE FOREVER"
+              title="Calculators, VIN & 50-State Laws"
+              price="$0"
+              unit="no card required"
+              items={[
+                'Live US Gov NHTSA VIN Recalls & Complaints',
+                'All 50 States + DC Doc Caps & Tax Credits',
+                '4-Square BS-Detector & 2-Step LTV Simulator',
+                'Free Red-Flag Preview on Any Contract PDF',
+              ]}
+              cta="Start Free in Deal Room"
+              onClick={() => navigate('/buy')}
+            />
+            <PriceTier
+              badge="MOST POPULAR • ALL 4 PILLARS"
+              title="60-Day VantagePaths Auto Pass"
+              price="$29"
+              unit="one-time payment"
+              featured
+              items={[
+                'Unlimited OTD, TILA & Insurance PDF Audits',
+                'Pre-Filled F&I Cancellation Demand Letter PDF',
+                'Day-14 Dealer Stall-Buster Escalation Letter',
+                'Round 1 & Round 2 Multi-Dealer Bid-War Kit',
+              ]}
+              cta="Unlock Via Loan Rescue or Audit"
+              onClick={() => navigate('/rescue')}
+            />
+            <PriceTier
+              badge="CONVENIENCE ADD-ON"
+              title="1-Click USPS Certified Mail"
+              price="+$15"
+              unit="per letter packet"
+              items={[
+                'You Review & Sign Your Own Cancellation Notice',
+                'Physical USPS Return-Receipt Proof to Admin + F&I',
+                'Zero Post Office Trips or Awkward Calls',
+                '100% Self-Service (Zero Legal Representation)',
+              ]}
+              cta="Preview Cancellation Mail Flow"
+              onClick={() => navigate('/rescue')}
+            />
+          </div>
+
+          {/* Built-in Partner Revenue Showcase */}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <PartnerCard
+              partnerId="auto-refi-credit-union"
+              badge="Auto Refinance Partner"
+              title="Stuck Above 7.5% Dealer APR? Check Soft-Pull Credit Union Refi Rates"
+              subtitle="Lowering a $36,000 loan by 3% saves ~$1,900+ in interest — zero impact to your credit score to check."
+              ctaLabel="Compare Refi Rates"
+              source="home_strip"
+              accent="navy"
+            />
+            <PartnerCard
+              partnerId="auto-insurance-compare"
+              badge="Auto Insurance Partner"
+              title="Paying Too Much at Renewal? Benchmark Apples-to-Apples Rates"
+              subtitle="Compare carriers side-by-side and swap $1,200 dealership GAP for ~$5/mo insurer Loan/Lease Payoff coverage."
+              ctaLabel="Compare Insurance Quotes"
+              source="home_strip"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* 50-STATE QUICK JUMP STRIP */}
+      <section className="mx-auto max-w-6xl space-y-4 px-4 py-12 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#0F766E]">
+              Every State Plays by Different Rules
+            </span>
+            <h2 className="font-serif-display text-2xl font-bold text-[#0B1528]">
+              Check Your State's Doc Fee Cap, Tax Credit &amp; Warranty Refund Law
+            </h2>
+          </div>
+          <button
+            onClick={() => navigate('/states')}
+            className="text-xs font-extrabold text-[#0F766E] hover:underline"
+          >
+            View All {states.length || 51} States →
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {['CA', 'TX', 'FL', 'NY', 'OH', 'GA', 'NC', 'VA', 'IL', 'PA', 'WA', 'AZ', 'CO', 'NJ', 'MI'].map((code) => (
+            <button
+              key={code}
+              onClick={() => navigate(`/state/${code}`)}
+              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 font-mono text-xs font-bold text-[#0B1528] shadow-xs transition hover:border-[#0F766E] hover:text-[#0F766E]"
+            >
+              <MapPin className="h-3 w-3 text-[#0F766E]" /> {code}
+            </button>
+          ))}
+        </div>
+      </section>
     </main>
   );
 };
+
+const PillarCard: React.FC<{
+  icon: React.ReactNode;
+  kicker: string;
+  title: string;
+  desc: string;
+  cta: string;
+  highlight?: boolean;
+  onClick: () => void;
+}> = ({ icon, kicker, title, desc, cta, highlight = false, onClick }) => (
+  <div
+    className={`flex flex-col justify-between rounded-2xl border p-6 shadow-xs transition hover:shadow-md ${
+      highlight ? 'border-[#0F766E] bg-teal-50/50' : 'border-slate-200 bg-white'
+    }`}
+  >
+    <div>
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-teal-200 bg-teal-50">
+          {icon}
+        </div>
+        <span className="font-mono text-[10.5px] font-bold uppercase tracking-wider text-[#0F766E]">
+          {kicker}
+        </span>
+      </div>
+      <h3 className="font-serif-display mt-4 text-xl font-bold text-[#0B1528]">{title}</h3>
+      <p className="mt-2 text-xs leading-relaxed text-slate-600">{desc}</p>
+    </div>
+    <button
+      onClick={onClick}
+      className="mt-5 inline-flex items-center gap-1.5 text-xs font-extrabold text-[#0F766E] hover:underline"
+    >
+      {cta} <ArrowRight className="h-3.5 w-3.5" />
+    </button>
+  </div>
+);
+
+const PriceTier: React.FC<{
+  badge: string;
+  title: string;
+  price: string;
+  unit: string;
+  items: string[];
+  cta: string;
+  featured?: boolean;
+  onClick: () => void;
+}> = ({ badge, title, price, unit, items, cta, featured = false, onClick }) => (
+  <div
+    className={`flex flex-col justify-between rounded-2xl border p-6 ${
+      featured
+        ? 'border-[#0F766E] bg-gradient-to-b from-teal-50/70 to-white shadow-lg shadow-teal-900/10'
+        : 'border-slate-200 bg-[#FAF9F5]'
+    }`}
+  >
+    <div>
+      <span
+        className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase ${
+          featured ? 'bg-[#0F766E] text-white' : 'bg-white text-slate-600 border border-slate-200'
+        }`}
+      >
+        {badge}
+      </span>
+      <h3 className="mt-3 text-base font-extrabold text-[#0B1528]">{title}</h3>
+      <div className="mt-2 flex items-baseline gap-1.5">
+        <span className="font-serif-display text-4xl font-bold text-[#0B1528]">{price}</span>
+        <span className="text-xs font-semibold text-slate-500">{unit}</span>
+      </div>
+      <ul className="mt-4 space-y-2 text-xs font-medium text-slate-700">
+        {items.map((item, i) => (
+          <li key={i} className="flex items-start gap-2">
+            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#0F766E]" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+    <button
+      onClick={onClick}
+      className={`mt-6 w-full rounded-xl py-2.5 text-xs font-extrabold transition ${
+        featured
+          ? 'bg-[#0F766E] text-white hover:bg-[#115E59]'
+          : 'border border-slate-300 bg-white text-[#0B1528] hover:border-[#0B1528]'
+      }`}
+    >
+      {cta}
+    </button>
+  </div>
+);
 
 export default App;

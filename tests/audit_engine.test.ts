@@ -22,6 +22,13 @@ import {
   generateCancellationTemplates,
   STATE_AUTO_RULES,
 } from '../server/autoKnowledge.ts';
+import {
+  analyzeInsurancePolicy,
+  calculateLoanRescueLtv,
+  calculateOutOfStateSavings,
+  calculateSellExitPaths,
+  resolvePartnerUrl,
+} from '../server/autoServices.ts';
 
 async function runTests() {
   console.log('Running VantagePaths Audit Hub unit tests...');
@@ -258,6 +265,91 @@ async function runTests() {
   );
   assert.ok(templates.cancellationLetter.includes('1HGCV1F30RA000001'));
   assert.ok(templates.stallBusterLetter.includes('CFPB'));
+
+  // 8. 4-Pillar Auto Services (2-Step Loan Rescue LTV, Out-of-State, Insurance Audit, Sell Exit, Partner Attribution)
+  const rescue = calculateLoanRescueLtv(
+    {
+      purchaseDateIso: '2026-11-05',
+      stateCode: 'TX',
+      currentLoanBalanceUsd: 40500,
+      estimatedVehicleValueUsd: 30500,
+      financedInLoan: true,
+      loanAprPct: 9.89,
+      targetRefiAprPct: 5.99,
+      loanTermMonths: 72,
+      purchaseMileage: 40,
+      currentMileage: 1150,
+      claimsFiled: false,
+      items: [
+        { type: 'vsc', label: 'Extended Warranty', costUsd: 3495, contractTermMonths: 72 },
+        { type: 'gap', label: 'GAP Waiver', costUsd: 1195, contractTermMonths: 72 },
+        { type: 'tire_wheel', label: 'Tire & Wheel', costUsd: 895, contractTermMonths: 60 },
+      ],
+    },
+    refNow
+  );
+  assert.ok(rescue.currentLtvPct > 130);
+  assert.ok(rescue.newLtvPct < 120);
+  assert.equal(rescue.unlockedRefiEligibility, true);
+  assert.ok(rescue.monthlyPaymentSavingsUsd > 120);
+
+  const oos = calculateOutOfStateSavings({
+    homeStateCode: 'FL',
+    remoteStateCode: 'OH',
+    localDealerPriceUsd: 37985,
+    localAddOnsUsd: 2195,
+    remoteDealerPriceUsd: 35600,
+    shippingOrFlightCostUsd: 750,
+  });
+  assert.equal(oos.winner, 'REMOTE_BUY');
+  assert.ok(oos.netSavingsUsd > 3500);
+
+  const ins = analyzeInsurancePolicy({
+    stateCode: 'TX',
+    currentSixMonthPremiumUsd: 1248,
+    priorSixMonthPremiumUsd: 985,
+    biPdLimits: '100/300/100',
+    collisionDeductibleUsd: 250,
+    compDeductibleUsd: 250,
+    hasRoadsideOnPolicy: true,
+    hasRentalReimbursement: true,
+    hasDealerGapCurrently: true,
+  });
+  assert.equal(ins.loyaltyPenaltyFlag, true);
+  assert.ok(ins.flags.length >= 4);
+  assert.ok(ins.zeroSpamQuoteSpecText.includes('EXCLUDE'));
+
+  const sell = calculateSellExitPaths({
+    stateCode: 'TX',
+    dealerTradeInOfferUsd: 18500,
+    instantCashOfferUsd: 18900,
+    privatePartyValueUsd: 19200,
+    loanPayoffUsd: 9500,
+    buyingReplacementCar: true,
+  });
+  assert.equal(sell.bestPath, 'DEALER_TRADE');
+  assert.ok(sell.tradeInTaxSavingsUsd > 1100);
+
+  const partner = resolvePartnerUrl('auto-refi-credit-union', {
+    AFFILIATE_AUTO_REFI_URL: 'https://impact.example.com/refi-track',
+  } as NodeJS.ProcessEnv);
+  assert.equal(partner?.targetUrl, 'https://impact.example.com/refi-track');
+
+  // Partner Click DB Revenue Attribution
+  const db2 = new AuditDatabase(':memory:');
+  try {
+    db2.logEvent({
+      eventName: 'partner_click',
+      vertical: 'auto',
+      metadata: { partnerId: 'auto-refi-credit-union', estimatedEpcUsd: 4.5 },
+    });
+    const s2 = db2.getAnalyticsSummary();
+    assert.equal(s2.partnerClicksTotal, 1);
+    assert.equal(s2.projectedAffiliateRevenueUsd, 4.5);
+    assert.equal(s2.byPartner[0].partnerId, 'auto-refi-credit-union');
+  } finally {
+    db2.close();
+  }
 
   console.log('ALL VANTAGEPATHS AUDIT HUB TESTS PASSED!');
 }

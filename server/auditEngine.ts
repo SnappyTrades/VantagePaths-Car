@@ -30,15 +30,15 @@ export const VERTICAL_PRICING: Record<AuditVerticalId, VerticalPricingPlan> = {
   },
   auto: {
     passSku: 'AUTO_PASS',
-    passName: '30-Day Car Buyer Pass',
-    passPriceUsd: 24,
+    passName: '60-Day VantagePaths Auto Pass',
+    passPriceUsd: 29,
     passDescription:
-      'Unlimited OTD worksheet & lease audits for 30 days, full junk-fee breakdown, APR markup check, and dealer counter-offer email.',
+      'Unlock all 4 pillars for 60 days: Buy-From-Home OTD & TILA Contract Audits, Pre-Filled F&I Cancellation + Stall-Buster PDFs, Zero-Spam Insurance Spec Sheets & Private Sale Checklists.',
     proSku: 'PRO_MONTHLY',
-    proName: 'VantagePaths Pro (Broker / Multi-Deal)',
-    proPriceUsd: 79,
+    proName: '1-Click USPS Certified Mail Dispatch',
+    proPriceUsd: 15,
     proDescription:
-      'Unlimited audits across all verticals with branded client PDF reports for auto brokers & advisors.',
+      'Optional self-service mail dispatch: you review & sign your own cancellation letter and VantagePaths dispatches USPS Certified Mail (Return Receipt) to Administrator + Dealer F&I.',
   },
   'home-bids': {
     passSku: 'HOME_PASS',

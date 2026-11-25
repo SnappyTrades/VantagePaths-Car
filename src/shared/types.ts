@@ -118,6 +118,14 @@ export interface AnalyticsSummaryResponse {
   conversionRatePct: number;
   totalEstimatedSavingsFlaggedUsd: number;
   waitlistCount: number;
+  partnerClicksTotal: number;
+  projectedAffiliateRevenueUsd: number;
+  projectedDirectRevenueUsd: number;
+  byPartner: Array<{
+    partnerId: string;
+    clicks: number;
+    projectedRevenueUsd: number;
+  }>;
   byVertical: Array<{
     vertical: AuditVerticalId;
     audits: number;

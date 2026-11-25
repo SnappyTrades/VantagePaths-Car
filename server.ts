@@ -19,6 +19,15 @@ import {
   STATE_AUTO_RULES,
 } from './server/autoKnowledge.ts';
 import {
+  analyzeInsurancePolicy,
+  calculateLoanRescueLtv,
+  calculateOutOfStateSavings,
+  calculateSellExitPaths,
+  lookupVinIntelligence,
+  PARTNER_OFFERS,
+  resolvePartnerUrl,
+} from './server/autoServices.ts';
+import {
   calculateAutoDeal,
   calculateFreightProfit,
   calculateHomeBidBenchmark,
@@ -168,7 +177,25 @@ async function startServer() {
       let fileBuffer: Buffer | null = null;
 
       if (useSample) {
-        if (vertical === 'auto' && req.body?.sampleVariant === 'signed-contract') {
+        if (vertical === 'auto' && req.body?.sampleVariant === 'insurance-dec') {
+          fileName = 'Sample_Auto_Insurance_Declarations_Page.txt';
+          rawText = `AUTO POLICY DECLARATIONS PAGE — RENEWAL NOTICE
+Policyholder: Jordan Taylor | State: Texas (75024) | Term: 6 Months
+Vehicle: 2024 Toyota RAV4 Hybrid XLE AWD (VIN: 2T3P1RFV0RW000112)
+
+RENEWAL PREMIUM: $1,248.00 / 6 months ($2,496/yr)
+Prior Term Premium: $985.00 / 6 months (+26.7% Renewal Jump — Zero Accidents or Tickets!)
+
+COVERAGES & DEDUCTIBLES:
+- Bodily Injury Liability: $100,000 / $300,000 ($312)
+- Property Damage Liability: $100,000 ($228)
+- Uninsured / Underinsured Motorist: $100,000 / $300,000 ($115)
+- Collision ($250 Deductible): $388
+- Comprehensive ($250 Deductible): $122
+- Emergency Roadside Assistance Towing: $39
+- Rental Reimbursement ($30/day): $44
+- Loan/Lease Payoff (GAP): NOT INCLUDED (Buyer is currently paying $1,195 financed dealer GAP!)`;
+        } else if (vertical === 'auto' && req.body?.sampleVariant === 'signed-contract') {
           fileName = 'Sample_Signed_RISC_TILA_Contract.txt';
           rawText = `RETAIL INSTALLMENT SALE CONTRACT — SIMPLE FINANCE CHARGE (TRUTH-IN-LENDING DISCLOSURE)
 Buyer: Alex Rivera | Dealer: Metro Valley Motors (Texas) | Purchase Date: 22 days ago
@@ -524,6 +551,161 @@ NOTE: Buyer was told in the F&I office that the lender "strongly prefers" GAP an
       estimate,
       kit: toPublicAuditResponse(stored),
     });
+  });
+
+  // Live Free US Gov NHTSA VIN Decode + Open Recalls + Owner Complaints
+  app.get('/api/auto/vin/:vin', async (req, res) => {
+    try {
+      const data = await lookupVinIntelligence(req.params.vin);
+      db.logEvent({ eventName: 'calculator_used', vertical: 'auto', metadata: { tool: 'vin_lookup', vin: data.vin } });
+      return res.json(data);
+    } catch (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : 'Invalid VIN.' });
+    }
+  });
+
+  // Pillar 2: 2-Step Car Loan Rescue (F&I Cancellation Refund + LTV Drop -> Auto Refinance Savings)
+  app.post('/api/auto/loan-rescue', (req, res) => {
+    const input = req.body || {};
+    const rescue = calculateLoanRescueLtv(input);
+    const templates = generateCancellationTemplates(input, rescue.refundEstimate);
+    const auditId = `vp_autorefund_${crypto.randomBytes(5).toString('hex')}`;
+    const createdUtc = new Date().toISOString();
+
+    const stored: StoredAuditRecord = {
+      auditId,
+      vertical: 'auto',
+      createdUtc,
+      fileName: 'VantagePaths 2-Step Loan Rescue & Cancellation Packet',
+      mimeType: 'application/json',
+      documentSummary: rescue.rescueHeadline,
+      verdictLabel: rescue.unlockedRefiEligibility
+        ? `LTV Drops ${rescue.currentLtvPct}% → ${rescue.newLtvPct}% (Unlocks Refinance!)`
+        : `Recover ~$${rescue.combinedTotalSavingsUsd.toLocaleString()} Total (${rescue.monthlyPaymentSavingsUsd > 0 ? `Save ~$${rescue.monthlyPaymentSavingsUsd}/mo` : 'Principal Reduction'})`,
+      verdictTone: 'high_risk',
+      estimatedSavingsUsd: rescue.combinedTotalSavingsUsd,
+      billedTotalUsd: rescue.refundEstimate.totalAddOnsPaidUsd,
+      fairRangeLabel: `~$${rescue.refundEstimate.estimatedPrincipalRefundUsd.toLocaleString()} Add-On Refund + ~$${rescue.monthlyPaymentSavingsUsd}/mo Refi Drop`,
+      freeFlags: [
+        {
+          level: 'CRITICAL',
+          title: `Step 1: Cancel $${rescue.refundEstimate.totalAddOnsPaidUsd.toLocaleString()} in Optional F&I Add-Ons`,
+          detail: `Est. ~$${rescue.refundEstimate.estimatedPrincipalRefundUsd.toLocaleString()} principal refund + ~$${rescue.refundEstimate.estimatedLoanInterestSavedUsd.toLocaleString()} avoided interest. Drops Loan-to-Value from ${rescue.currentLtvPct}% to ${rescue.newLtvPct}%.`,
+          estimatedImpactUsd: rescue.refundEstimate.totalRecoverableValueUsd,
+        },
+        {
+          level: 'WARNING',
+          title: rescue.unlockedRefiEligibility
+            ? `Step 2: Refinance Eligibility UNLOCKED (Save ~$${rescue.monthlyPaymentSavingsUsd}/mo)`
+            : `Step 2: Refinance From ${input.loanAprPct}% → ${input.targetRefiAprPct || 5.99}%`,
+          detail: `Once the principal refund posts, refinancing cuts your monthly payment from ~$${rescue.currentMonthlyPaymentUsd}/mo to ~$${rescue.newRefiMonthlyPaymentUsd}/mo.`,
+          estimatedImpactUsd: rescue.refiInterestSavingsUsd,
+        },
+      ],
+      lockedFlags: [
+        {
+          level: 'INFO',
+          title: 'Day-14 Dealer Stall-Buster Escalation Letter Included',
+          detail: `${templates.stallBusterSubject}\n\n${templates.stallBusterLetter}`,
+          estimatedImpactUsd: null,
+        },
+        {
+          level: 'INFO',
+          title: 'Lender Principal-Application Verification Script Included',
+          detail: templates.lenderCheckScript,
+          estimatedImpactUsd: null,
+        },
+      ],
+      lineItems: rescue.refundEstimate.lines.map((l) => ({
+        label: l.label,
+        quotedAmount: `$${l.originalCostUsd.toLocaleString()}`,
+        benchmarkAmount:
+          l.refundMode === 'DISPUTE_ONLY' ? 'Check Contract' : `~$${l.estimatedRefundUsd.toLocaleString()} Refund`,
+        status: l.refundMode === 'DISPUTE_ONLY' ? 'SUSPECT' : 'OVERCHARGED',
+      })),
+      counterOfferSubject: templates.cancellationSubject,
+      counterOfferScript: templates.cancellationLetter,
+      negotiationChecklist: templates.checklist,
+      deterministicMetrics: [
+        { label: 'LTV Before → After', value: `${rescue.currentLtvPct}% → ${rescue.newLtvPct}%` },
+        { label: 'Est. Principal Refund', value: `$${rescue.refundEstimate.estimatedPrincipalRefundUsd.toLocaleString()}` },
+        { label: 'Est. Refi Monthly Drop', value: `-$${rescue.monthlyPaymentSavingsUsd}/mo` },
+      ],
+      reasoningProvider: 'DETERMINISTIC_FALLBACK',
+      llmProvider: null,
+      modelUsed: 'Deterministic 2-Step Loan Rescue Engine',
+      isUnlocked: false,
+      unlockedUtc: null,
+      unlockMethod: null,
+      stripeSessionId: null,
+    };
+
+    db.saveAudit(stored);
+    db.logEvent({
+      eventName: 'audit_completed',
+      vertical: 'auto',
+      auditId,
+      metadata: { tool: 'loan_rescue', estimatedSavingsUsd: stored.estimatedSavingsUsd },
+    });
+
+    return res.json({ rescue, kit: toPublicAuditResponse(stored) });
+  });
+
+  // Pillar 1: Out-of-State Buying & Shipping Net Savings
+  app.post('/api/auto/out-of-state', (req, res) => {
+    const result = calculateOutOfStateSavings(req.body || {});
+    db.logEvent({ eventName: 'calculator_used', vertical: 'auto', metadata: { tool: 'out_of_state' } });
+    res.json(result);
+  });
+
+  // Pillar 3: Zero-Spam Auto Insurance Declarations Audit
+  app.post('/api/auto/insurance-audit', (req, res) => {
+    const result = analyzeInsurancePolicy(req.body || {});
+    db.logEvent({ eventName: 'calculator_used', vertical: 'auto', metadata: { tool: 'insurance_audit' } });
+    res.json(result);
+  });
+
+  // Pillar 4: Sell or Trade-In Max-Cash Exit Path
+  app.post('/api/auto/sell-exit', (req, res) => {
+    const result = calculateSellExitPaths(req.body || {});
+    db.logEvent({ eventName: 'calculator_used', vertical: 'auto', metadata: { tool: 'sell_exit' } });
+    res.json(result);
+  });
+
+  // Day-1 Revenue Layer 2: Tracked High-CPA Partner / Affiliate Outbound Engine
+  app.get('/api/partner/offers', (_req, res) => {
+    res.json({
+      offers: PARTNER_OFFERS.map((o) => ({
+        id: o.id,
+        pillar: o.pillar,
+        category: o.category,
+        title: o.title,
+        subtitle: o.subtitle,
+        ctaLabel: o.ctaLabel,
+        badge: o.badge,
+        estimatedCpaUsd: o.estimatedCpaUsd,
+        disclosure: o.disclosure,
+        clickPath: `/api/partner/click/${o.id}`,
+      })),
+    });
+  });
+
+  app.get('/api/partner/click/:partnerId', (req, res) => {
+    const resolved = resolvePartnerUrl(req.params.partnerId);
+    if (!resolved) return res.status(404).json({ error: 'Unknown partner offer.' });
+    db.logEvent({
+      eventName: 'partner_click',
+      vertical: 'auto',
+      metadata: {
+        partnerId: resolved.offer.id,
+        pillar: resolved.offer.pillar,
+        category: resolved.offer.category,
+        estimatedEpcUsd: resolved.offer.estimatedEpcUsd,
+        estimatedCpaUsd: resolved.offer.estimatedCpaUsd,
+        source: String(req.query.source || 'web').slice(0, 40),
+      },
+    });
+    return res.redirect(302, resolved.targetUrl);
   });
 
   // Funnel Analytics & Phase 2 Waitlist
