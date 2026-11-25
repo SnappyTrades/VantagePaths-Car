@@ -33,6 +33,7 @@ import {
   computeBuyerLeverageScore,
   searchVehicleInventory,
 } from '../server/inventorySearch.ts';
+import { sanitizePdfText } from '../src/utils/pdfExport.ts';
 
 async function runTests() {
   console.log('Running VantagePaths Car unit tests...');
@@ -365,6 +366,11 @@ async function runTests() {
     AFFILIATE_AUTO_REFI_URL: 'https://impact.example.com/refi-track',
   } as NodeJS.ProcessEnv);
   assert.equal(partner?.targetUrl, 'https://impact.example.com/refi-track');
+
+  // 7. PDF Unicode & WinAnsi sanitizer check (no arrow mojibake!)
+  const cleanedPdfStr = sanitizePdfText('LTV Drops 132.8% → 114.5% — “Smart” ★');
+  assert.equal(cleanedPdfStr, 'LTV Drops 132.8% -> 114.5%  -  "Smart" *');
+  assert.ok(!cleanedPdfStr.includes('→'));
 
   console.log('ALL VANTAGEPATHS CAR TESTS PASSED!');
 }
