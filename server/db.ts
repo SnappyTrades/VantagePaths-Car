@@ -59,6 +59,13 @@ export class AuditDatabase {
       );
 
       CREATE UNIQUE INDEX IF NOT EXISTS idx_waitlist_email_vertical ON waitlist(email, vertical);
+
+      CREATE TABLE IF NOT EXISTS inventory_cache (
+        cache_key TEXT PRIMARY KEY,
+        created_utc TEXT NOT NULL,
+        expires_utc TEXT NOT NULL,
+        payload_json TEXT NOT NULL
+      );
     `);
   }
 
@@ -185,6 +192,30 @@ export class AuditDatabase {
       )
       .run(new Date().toISOString(), cleanEmail, vertical, notes.trim().slice(0, 300));
     return { alreadyExists: res.changes === 0 };
+  }
+
+  public getInventoryCache(cacheKey: string): { payload: unknown; expiresUtc: string } | null {
+    const row = this.db
+      .prepare(`SELECT expires_utc, payload_json FROM inventory_cache WHERE cache_key = ?`)
+      .get(cacheKey) as { expires_utc: string; payload_json: string } | undefined;
+    if (!row) return null;
+    if (Date.parse(row.expires_utc) <= Date.now()) {
+      this.db.prepare(`DELETE FROM inventory_cache WHERE cache_key = ?`).run(cacheKey);
+      return null;
+    }
+    return { payload: JSON.parse(row.payload_json), expiresUtc: row.expires_utc };
+  }
+
+  public setInventoryCache(cacheKey: string, payload: unknown, ttlSeconds = 21600): string {
+    const now = Date.now();
+    const expiresUtc = new Date(now + ttlSeconds * 1000).toISOString();
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO inventory_cache (cache_key, created_utc, expires_utc, payload_json)
+         VALUES (?, ?, ?, ?)`
+      )
+      .run(cacheKey, new Date(now).toISOString(), expiresUtc, JSON.stringify(payload));
+    return expiresUtc;
   }
 
   public getAnalyticsSummary(): AnalyticsSummaryResponse {

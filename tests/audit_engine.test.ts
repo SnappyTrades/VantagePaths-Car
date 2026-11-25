@@ -29,6 +29,11 @@ import {
   calculateSellExitPaths,
   resolvePartnerUrl,
 } from '../server/autoServices.ts';
+import {
+  buildMultiSiteDeepLinks,
+  computeBuyerLeverageScore,
+  searchVehicleInventory,
+} from '../server/inventorySearch.ts';
 
 async function runTests() {
   console.log('Running VantagePaths Audit Hub unit tests...');
@@ -347,6 +352,53 @@ async function runTests() {
     assert.equal(s2.partnerClicksTotal, 1);
     assert.equal(s2.projectedAffiliateRevenueUsd, 4.5);
     assert.equal(s2.byPartner[0].partnerId, 'auto-refi-credit-union');
+
+    // 9. Anti-Dealer Leverage Car Hunter + 6-Hour SQLite Inventory Cache
+    const levHigh = computeBuyerLeverageScore({
+      daysOnMarket: 82,
+      priceDropCount: 3,
+      priceDropTotalUsd: 2150,
+      dealerDocFeeUsd: 225,
+    });
+    assert.equal(levHigh.label, 'HIGH LEVERAGE');
+    assert.ok(levHigh.score >= 85);
+
+    const links = buildMultiSiteDeepLinks({
+      year: '2026',
+      make: 'Toyota',
+      model: 'RAV4',
+      trim: 'XLE Premium',
+      color: 'Black',
+      zip: '75201',
+      radiusMiles: 100,
+      homeStateCode: 'TX',
+    });
+    assert.equal(links.length, 4);
+    assert.ok(links[0].url.includes('sort=listed_at'));
+    assert.ok(links[0].url.includes('exterior_color_slugs[]=black'));
+
+    const inv = await searchVehicleInventory(
+      {
+        year: '2026',
+        make: 'Toyota',
+        model: 'RAV4',
+        trim: 'XLE Premium',
+        color: 'Black',
+        zip: '75201',
+        radiusMiles: 100,
+        homeStateCode: 'TX',
+      },
+      db2,
+      {} as NodeJS.ProcessEnv
+    );
+    assert.equal(inv.mode, 'PREVIEW_PLUS_DEEP_LINKS');
+    assert.ok(inv.listings.length >= 4);
+    assert.ok(inv.listings[0].leverageScore >= inv.listings[inv.listings.length - 1].leverageScore);
+
+    // SQLite cache round-trip check
+    db2.setInventoryCache('test-key', { hello: 'world' }, 3600);
+    const hit = db2.getInventoryCache('test-key');
+    assert.deepEqual(hit?.payload, { hello: 'world' });
   } finally {
     db2.close();
   }

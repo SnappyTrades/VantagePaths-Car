@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { PublicAuditResponse } from '../shared/types';
 import { AuditWorkspace } from './AuditWorkspace';
+import { CarHunterSection } from './CarHunterSection';
 import { PartnerCard } from './PartnerCard';
 
 interface StateRule {
@@ -202,8 +203,34 @@ Best,
         </p>
       </div>
 
+      {/* ANTI-DEALER LEVERAGE CAR HUNTER */}
+      <CarHunterSection
+        states={states}
+        homeState={homeState}
+        onHomeStateChange={setHomeState}
+        onAddToBidBoard={(item) => {
+          setTargetVehicle(item.vehicleLabel);
+          setQuotes((prev) => [
+            ...prev,
+            {
+              id: `hunted_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+              dealerName: item.dealerName,
+              sellingPrice: item.sellingPrice,
+              addOns: item.addOns,
+              docFee: item.docFee,
+              taxAndDmv: item.taxAndDmv,
+            },
+          ]);
+        }}
+        onInspectVin={(vin) => {
+          setVinInput(vin);
+          lookupVin(vin);
+          document.getElementById('vin-section')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }}
+      />
+
       {/* STEP 1: FREE LIVE NHTSA VIN DECODER + RECALLS & OWNER COMPLAINTS */}
-      <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section id="vin-section" className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-[#0F766E]">

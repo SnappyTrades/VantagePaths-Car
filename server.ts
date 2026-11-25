@@ -27,6 +27,7 @@ import {
   PARTNER_OFFERS,
   resolvePartnerUrl,
 } from './server/autoServices.ts';
+import { searchVehicleInventory } from './server/inventorySearch.ts';
 import {
   calculateAutoDeal,
   calculateFreightProfit,
@@ -551,6 +552,23 @@ NOTE: Buyer was told in the F&I office that the lender "strongly prefers" GAP an
       estimate,
       kit: toPublicAuditResponse(stored),
     });
+  });
+
+  // Pillar 1: Anti-Dealer Leverage Car Hunter (Multi-Site Deep Links + Cached Live MarketCheck/Auto.dev)
+  app.post('/api/auto/search-inventory', async (req, res) => {
+    try {
+      const result = await searchVehicleInventory(req.body || {}, db);
+      db.logEvent({
+        eventName: 'calculator_used',
+        vertical: 'auto',
+        metadata: { tool: 'inventory_hunter', mode: result.mode, query: result.querySummary },
+      });
+      return res.json(result);
+    } catch (err) {
+      return res.status(500).json({
+        error: err instanceof Error ? err.message : 'Inventory search failed.',
+      });
+    }
   });
 
   // Live Free US Gov NHTSA VIN Decode + Open Recalls + Owner Complaints
