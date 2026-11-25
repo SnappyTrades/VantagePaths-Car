@@ -181,7 +181,7 @@ export const LoanRescuePage: React.FC<Props> = ({ refData, initialAudit = null }
           Already Bought? Cancel Packed Add-Ons, Drop Your LTV &amp; Slash Your Monthly Payment
         </h1>
         <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
-          Most buyers get denied for refinancing because \$3,500–\$5,500 of dealer add-ons pushed their Loan-to-Value (LTV) above 120%. Step 1: legally cancel those optional add-ons directly with the administrator. Step 2: once principal drops, refinance your marked-up dealer APR.
+          Most buyers get denied for refinancing because $3,500–$5,500 of dealer add-ons pushed their Loan-to-Value (LTV) above 120%. Step 1: legally cancel those optional add-ons directly with the administrator. Step 2: once principal drops, refinance your marked-up dealer APR.
         </p>
       </div>
 

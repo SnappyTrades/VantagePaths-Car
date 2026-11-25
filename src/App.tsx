@@ -255,7 +255,7 @@ const EditorialHomePage: React.FC<{ navigate: (path: string) => void; states: an
               Do everything you <em className="text-[#0F766E]">hate</em> about owning a car — smarter, from your couch.
             </h1>
             <p className="text-base leading-relaxed text-slate-600">
-              Skip 4-hour dealership traps and insurance spam calls. VantagePaths gives you the exact tools to <strong>buy a car 95% online</strong>, <strong>cancel \$2k–\$5k in regretted warranties &amp; GAP</strong> to unlock refinancing, <strong>audit your insurance every 6 months</strong>, and <strong>sell for max cash</strong>.
+              Skip 4-hour dealership traps and insurance spam calls. VantagePaths gives you the exact tools to <strong>buy a car 95% online</strong>, <strong>cancel $2k–$5k in regretted warranties &amp; GAP</strong> to unlock refinancing, <strong>audit your insurance every 6 months</strong>, and <strong>sell for max cash</strong>.
             </p>
 
             <div className="flex flex-wrap gap-3 pt-1">
@@ -460,7 +460,7 @@ const EditorialHomePage: React.FC<{ navigate: (path: string) => void; states: an
               Simple Pricing &amp; Transparent Revenue Model
             </span>
             <h2 className="font-serif-display mt-1 text-3xl font-bold text-[#0B1528]">
-              Free Tools Forever. Pay \$29 Only When You Want Ready-to-Send Packets.
+              Free Tools Forever. Pay $29 Only When You Want Ready-to-Send Packets.
             </h2>
             <p className="mt-2 text-sm text-slate-600">
               Whether a visitor uses our free calculators and compares an auto refi / insurance offer, OR unlocks the full 60-Day Self-Service Pass, VantagePaths stays 100% independent of dealership markups.

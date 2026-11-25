@@ -320,7 +320,7 @@ export const SellOrTradePage: React.FC<{ states: any[] }> = ({ states }) => {
           Pillar 4 • Max-Cash Car Exit Optimizer
         </span>
         <h1 className="font-serif-display text-3xl font-bold text-[#0B1528] sm:text-4xl">
-          Don't Leave \$2,500 on the Table When Trading In or Selling Your Car
+          Don't Leave $2,500 on the Table When Trading In or Selling Your Car
         </h1>
         <p className="max-w-3xl text-sm leading-relaxed text-slate-600">
           In 40+ states, trading in saves you hundreds or thousands in sales tax — while in states like California, Virginia, and Oklahoma, selling privately or to an instant cash buyer wins outright. Compare all 3 exit paths with exact tax math.
